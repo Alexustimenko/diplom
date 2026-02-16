@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+    <style>
+        body { background-color: #33CCCC; font-family: Arial, sans-serif; }
+        .container {
+            width: 400px;
+            margin: 100px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        h2 { text-align: center; color: #FF7400; }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 2px solid #33CCCC;
+            border-radius: 6px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background-color: #FF7400;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { opacity: 0.9; }
+        .error { margin-top: 10px; color: red; text-align: center; }
+        .success { margin-top: 10px; color: green; text-align: center; font-weight: bold; }
+        .link { margin-top: 12px; text-align: center; }
+        .link a { color: #33CCCC; font-weight: bold; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Registration</h2>
+    <form method="POST">
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+
+        <select name="customer_type">
+            <option value="fiz">Физическое лицо</option>
+            <option value="ur">Юридическое лицо</option>
+        </select>
+
+        <button type="submit">Register</button>
+    </form>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+        <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <div class="link">
+        <a href="/login">Уже есть аккаунт? Войти</a>
+    </div>
+</div>
+
+</body>
+</html>

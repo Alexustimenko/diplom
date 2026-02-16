@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chair Shop</title>
+    <style>
+        :root {
+            --orange: #FF7400;
+            --cyan: #33CCCC;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: var(--cyan);
+        }
+
+        .topbar {
+            background: white;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+
+        .logo {
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            color: var(--orange);
+            font-size: 20px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 2px solid var(--cyan);
+            background: white;
+            color: #0b3b3b;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .btn.primary {
+            border-color: var(--orange);
+            color: white;
+            background: var(--orange);
+        }
+
+        .btn:hover { opacity: 0.92; }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 26px auto;
+            padding: 0 16px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+        }
+
+        .title {
+            margin: 0 0 8px 0;
+            color: var(--orange);
+        }
+
+        .muted { color: #3e6c6c; margin: 0; }
+
+        .badge {
+            display:inline-block;
+            margin-left: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: var(--cyan);
+            color: white;
+            font-weight: 700;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="topbar">
+        <div class="logo">CHAIR SHOP</div>
+
+        <div class="nav">
+            {% if is_logged_in %}
+                <span style="font-weight:700; color:#0b3b3b;">
+                    {{ email }}
+                    {% if is_admin %}<span class="badge">ADMIN</span>{% endif %}
+                </span>
+
+                <a class="btn primary" href="/cabinet">Личный кабинет</a>
+                <a class="btn" href="/logout">Выйти</a>
+            {% else %}
+                <a class="btn primary" href="/login">Войти</a>
+                <a class="btn" href="/register">Регистрация</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="wrap">
+        <div class="card">
+            <h1 class="title">Каталог офисных товаров</h1>
+            <p class="muted">
+                Главная страница готова. Дальше подключим каталог товаров, фильтры, пагинацию и подбор/сравнение.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

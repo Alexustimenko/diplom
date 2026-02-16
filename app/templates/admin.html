@@ -1,0 +1,281 @@
+<!-- ============================
+     app/templates/admin.html
+     (обновление: блок товаров + загрузка нескольких BLOB-картинок)
+     ============================ -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin</title>
+    <style>
+        :root { --orange:#FF7400; --cyan:#33CCCC; }
+        body { background: var(--cyan); font-family: Arial, sans-serif; margin:0; }
+
+        .topbar{
+            background:white;
+            padding:14px 20px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            box-shadow:0 6px 16px rgba(0,0,0,0.15);
+        }
+        .logo{ font-weight:900; color:var(--orange); letter-spacing:0.06em; }
+
+        .btn{
+            display:inline-block;
+            padding:10px 14px;
+            border-radius:10px;
+            border:2px solid var(--cyan);
+            background:white;
+            color:#0b3b3b;
+            font-weight:700;
+            text-decoration:none;
+            cursor:pointer;
+        }
+        .btn.primary{ background:var(--orange); border-color:var(--orange); color:white; }
+        .btn:hover{ opacity:0.92; }
+
+        .wrap{ max-width:1100px; margin:26px auto; padding:0 16px; }
+
+        .card{
+            background:white;
+            border-radius:14px;
+            padding:22px;
+            box-shadow:0 10px 25px rgba(0,0,0,0.18);
+            margin-bottom:16px;
+        }
+        h2{ margin:0 0 12px 0; color:var(--orange); }
+
+        .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+        input, select{
+            padding:10px;
+            border:2px solid var(--cyan);
+            border-radius:10px;
+        }
+        input{ width:260px; }
+
+        table{ width:100%; border-collapse:collapse; margin-top:14px; }
+        th, td{ padding:10px; border-bottom:1px solid #e8e8e8; text-align:left; vertical-align:middle; }
+        th{ background:var(--orange); color:white; }
+
+        .msg{ margin-top:12px; font-weight:700; }
+        .msg.err{ color:#d10000; }
+        .msg.ok{ color:#148a00; }
+
+        .muted{ color:#3e6c6c; margin:0; }
+        .section-title{ display:flex; justify-content:space-between; align-items:center; }
+        .chip{ background:var(--cyan); color:white; padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px; }
+
+        img.thumb{ width:60px; height:60px; object-fit:cover; border-radius:10px; border:2px solid #e8e8e8; }
+    </style>
+</head>
+
+<body>
+    <div class="topbar">
+        <div class="logo">ADMIN PANEL</div>
+        <div class="row">
+            <span style="font-weight:800; color:#0b3b3b;">
+                {{ email }} <span class="chip">ADMIN</span>
+            </span>
+            <a class="btn" href="/">На главную</a>
+            <a class="btn primary" href="/logout">Выйти</a>
+        </div>
+    </div>
+
+    <div class="wrap">
+
+        <!-- BRANDS -->
+        <div class="card">
+            <div class="section-title">
+                <h2>Бренды</h2>
+                <p class="muted">Добавление, редактирование, удаление</p>
+            </div>
+
+            <form method="POST" class="row">
+                <input type="hidden" name="action" value="add_brand">
+                <input name="brand_name" placeholder="Название бренда" required>
+                <button class="btn primary" type="submit">Добавить</button>
+            </form>
+
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th style="width:260px;">Действия</th>
+                </tr>
+
+                {% for b in brands %}
+                <tr>
+                    <td>{{ b.id_brand }}</td>
+                    <td>{{ b.name }}</td>
+                    <td>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="edit_brand">
+                            <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
+                            <input type="hidden" name="brand_name" id="edit_name_{{ b.id_brand }}">
+                            <button class="btn" type="button"
+                                onclick="
+                                    const v = prompt('Новое название бренда:', '{{ b.name }}');
+                                    if(v && v.trim().length > 0){
+                                        document.getElementById('edit_name_{{ b.id_brand }}').value = v.trim();
+                                        this.form.submit();
+                                    }
+                                "
+                            >Редактировать</button>
+                        </form>
+
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="delete_brand">
+                            <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
+                            <button class="btn primary" type="submit"
+                                onclick="return confirm('Удалить бренд {{ b.name }}?');"
+                            >Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- CATEGORIES -->
+        <div class="card">
+            <div class="section-title">
+                <h2>Категории / Подкатегории</h2>
+                <p class="muted">Добавление, редактирование, удаление</p>
+            </div>
+
+            <form method="POST" class="row">
+                <input type="hidden" name="action" value="add_category">
+                <input name="category_name" placeholder="Название категории" required>
+
+                <select name="parent_id">
+                    <option value="">(без родителя)</option>
+                    {% for c in categories %}
+                        <option value="{{ c.category_id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <button class="btn primary" type="submit">Добавить</button>
+            </form>
+
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Родитель</th>
+                    <th style="width:260px;">Действия</th>
+                </tr>
+
+                {% for c in categories %}
+                <tr>
+                    <td>{{ c.category_id }}</td>
+                    <td>{{ c.name }}</td>
+                    <td>{{ c.parent_name if c.parent_name else "-" }}</td>
+                    <td>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="edit_category">
+                            <input type="hidden" name="category_id" value="{{ c.category_id }}">
+
+                            <input type="hidden" name="category_name" id="cat_name_{{ c.category_id }}">
+                            <input type="hidden" name="parent_id" id="cat_parent_{{ c.category_id }}">
+
+                            <button class="btn" type="button"
+                                onclick="
+                                    const newName = prompt('Новое название категории:', '{{ c.name }}');
+                                    if(!newName || newName.trim().length === 0) return;
+
+                                    const parentHint = 'Введите ID родителя (пусто = без родителя).\\nТекущий parent_id: {{ c.parent_id if c.parent_id else '' }}';
+                                    const newParent = prompt(parentHint, '{{ c.parent_id if c.parent_id else '' }}');
+                                    const parentValue = (newParent === null) ? null : newParent.trim();
+
+                                    document.getElementById('cat_name_{{ c.category_id }}').value = newName.trim();
+                                    document.getElementById('cat_parent_{{ c.category_id }}').value = parentValue;
+                                    this.form.submit();
+                                "
+                            >Редактировать</button>
+                        </form>
+
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="delete_category">
+                            <input type="hidden" name="category_id" value="{{ c.category_id }}">
+                            <button class="btn primary" type="submit"
+                                onclick="return confirm('Удалить категорию {{ c.name }}?');"
+                            >Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- GLOBAL MESSAGES -->
+        {% if error %}
+            <div class="card"><div class="msg err">{{ error }}</div></div>
+        {% endif %}
+        {% if success %}
+            <div class="card"><div class="msg ok">{{ success }}</div></div>
+        {% endif %}
+
+        <!-- PRODUCTS (NEW) -->
+        <div class="card">
+            <div class="section-title">
+                <h2>Товары</h2>
+                <p class="muted">Добавление товара + несколько картинок (BLOB)</p>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" class="row">
+                <input type="hidden" name="action" value="add_product">
+
+                <input name="name" placeholder="Название" required>
+                <input name="price" placeholder="Цена" required>
+                <input name="stock" placeholder="Количество" required>
+
+                <select name="category_id">
+                    <option value="">(категория не выбрана)</option>
+                    {% for c in categories %}
+                        <option value="{{ c.category_id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="brand_id">
+                    <option value="">(бренд не выбран)</option>
+                    {% for b in brands %}
+                        <option value="{{ b.id_brand }}">{{ b.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <input type="file" name="images" multiple>
+
+                <button class="btn primary" type="submit">Добавить товар</button>
+            </form>
+
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <th>Фото</th>
+                    <th>Название</th>
+                    <th>Цена</th>
+                    <th>Кол-во</th>
+                    <th>Категория</th>
+                    <th>Бренд</th>
+                </tr>
+
+                {% for p in products %}
+                <tr>
+                    <td>{{ p.product_id }}</td>
+                    <td>
+                        <img class="thumb" src="/product_image/{{ p.product_id }}" alt="">
+                    </td>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.price }}</td>
+                    <td>{{ p.stock_quantity }}</td>
+                    <td>{{ p.category_name if p.category_name else "-" }}</td>
+                    <td>{{ p.brand_name if p.brand_name else "-" }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+    </div>
+</body>
+</html>

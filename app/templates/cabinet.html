@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cabinet</title>
+    <style>
+        body { background-color: #33CCCC; font-family: Arial, sans-serif; }
+        .box {
+            width: 700px;
+            margin: 100px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        h2 { color: #FF7400; margin-top: 0; }
+        .hint { color: #2f6e6e; font-size: 18px; }
+        a { color:#FF7400; font-weight:bold; text-decoration:none; }
+        .tag { display:inline-block; padding:6px 10px; border-radius: 8px; background:#33CCCC; color:white; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>Личный кабинет</h2>
+    <p>Email: <b>{{ email }}</b></p>
+    <p>Тип клиента: <span class="tag">{{ customer_type }}</span></p>
+
+    <p class="hint">Скоро тут будет именно ваша история заказов ✅</p>
+
+    <p><a href="/">На главную</a> · <a href="/logout">Выйти</a></p>
+</div>
+</body>
+</html>
