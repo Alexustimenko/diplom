@@ -413,3 +413,57 @@ def cart_clear():
     session["cart"] = {}
     session.modified = True
     return redirect("/cart")
+@auth_bp.route("/cart/checkout", methods=["POST"])
+def cart_checkout():
+    gate = _require_login()
+    if gate:
+        return gate
+
+    cart = session.get("cart", {})
+    if not cart:
+        return redirect("/cart")
+
+    user_id = session["user_id"]
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # товары из корзины
+    ids = [int(k) for k in cart.keys()]
+    placeholders = ",".join(["?"] * len(ids))
+
+    cur.execute(f"""
+        SELECT product_id, price
+        FROM dbo.vw_products
+        WHERE product_id IN ({placeholders})
+    """, *ids)
+
+    rows = cur.fetchall()
+
+    price_map = {int(r.product_id): float(r.price) for r in rows}
+
+    total = 0.0
+    for pid_str, qty in cart.items():
+        pid = int(pid_str)
+        q = int(qty)
+        total += price_map.get(pid, 0.0) * q
+
+    # 1) создаём заказ в orders
+    cur.execute("EXEC dbo.sp_place_order ?, ?", user_id, total)
+    order_id = cur.fetchone()[0]
+
+    # 2) добавляем позиции в order_items
+    for pid_str, qty in cart.items():
+        pid = int(pid_str)
+        q = int(qty)
+        price = price_map.get(pid, 0.0)
+
+        cur.execute("EXEC dbo.sp_add_order_item ?, ?, ?, ?", order_id, pid, q, price)
+
+    conn.commit()
+    conn.close()
+
+    session["cart"] = {}
+    session.modified = True
+
+    return redirect("/cabinet")

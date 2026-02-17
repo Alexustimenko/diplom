@@ -104,9 +104,11 @@
                 </form>
 
                 <!-- позже сюда добавим кнопку "Купить" -->
-                <button class="btn primary" type="button" disabled style="opacity:.6; cursor:not-allowed;">
-                    Купить (сделаем следующим шагом)
-                </button>
+                <form method="POST" action="/cart/checkout">
+    <button class="btn primary" type="submit">
+        Купить
+    </button>
+</form>
             </div>
         {% endif %}
     </div>
