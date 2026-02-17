@@ -1,3 +1,4 @@
+<!-- app/templates/index.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -5,11 +6,7 @@
     <style>
         :root{ --orange:#FF7400; --cyan:#33CCCC; }
 
-        body{
-            margin:0;
-            background:var(--cyan);
-            font-family:Arial, sans-serif;
-        }
+        body{ margin:0; background:var(--cyan); font-family:Arial, sans-serif; }
 
         .topbar{
             background:white;
@@ -46,18 +43,10 @@
             text-decoration:none;
             cursor:pointer;
         }
-        .btn.primary{
-            background:var(--orange);
-            border-color:var(--orange);
-            color:white;
-        }
+        .btn.primary{ background:var(--orange); border-color:var(--orange); color:white; }
         .btn:hover{ opacity:0.92; }
 
-        .wrap{
-            max-width:1300px;
-            margin:26px auto;
-            padding:0 16px;
-        }
+        .wrap{ max-width:1300px; margin:26px auto; padding:0 16px; }
 
         .hero{
             background:white;
@@ -72,10 +61,24 @@
             font-size:34px;
             font-weight:900;
         }
-        .hero p{
-            margin:0;
-            color:#2f5f5f;
-            font-weight:700;
+        .hero p{ margin:0; color:#2f5f5f; font-weight:700; }
+
+        /* ✅ поиск */
+        .search-row{
+            margin-top:14px;
+            display:flex;
+            gap:12px;
+            align-items:center;
+            flex-wrap:wrap;
+        }
+        .search{
+            flex:1;
+            min-width:260px;
+            padding:12px 14px;
+            border-radius:12px;
+            border:2px solid var(--cyan);
+            font-weight:800;
+            outline:none;
         }
 
         .grid{
@@ -84,11 +87,7 @@
             gap:22px;
         }
 
-        a.card{
-            text-decoration:none;
-            color:inherit;
-        }
-
+        /* ✅ карточка кликабельна */
         .card{
             background:white;
             border-radius:18px;
@@ -97,12 +96,12 @@
             display:flex;
             flex-direction:column;
             min-height:420px;
-            transition: transform .08s ease, box-shadow .08s ease;
+            text-decoration:none;
+            color:inherit;
+            cursor:pointer;
         }
-        .card:hover{
-            transform: translateY(-2px);
-            box-shadow:0 14px 30px rgba(0,0,0,.22);
-        }
+        .card:hover{ transform: translateY(-1px); }
+        .card:active{ transform: translateY(0px); }
 
         .thumb{
             width:100%;
@@ -144,17 +143,8 @@
             align-items:baseline;
             margin-top:12px;
         }
-        .price{
-            font-weight:900;
-            color:var(--orange);
-            font-size:20px;
-        }
-        .old{
-            font-weight:800;
-            color:#999;
-            text-decoration:line-through;
-            font-size:14px;
-        }
+        .price{ font-weight:900; color:var(--orange); font-size:20px; }
+        .old{ font-weight:800; color:#999; text-decoration:line-through; font-size:14px; }
 
         .empty{
             background:white;
@@ -193,18 +183,29 @@
 
     <div class="hero">
         <h1>Каталог офисных товаров</h1>
-        <p>Нажми на карточку — откроется страница товара.</p>
+        <p>Дальше подключим фильтры, пагинацию и подбор/сравнение.</p>
+
+        <div class="search-row">
+            <input id="searchInput" class="search" placeholder="Поиск по товарам, описанию, бренду, категории…" value="{{ q if q else '' }}">
+            <span class="muted" id="searchHint"></span>
+        </div>
     </div>
 
     {% if products is none or products == [] %}
         <div class="empty">
             Товары не найдены.
-            <div class="muted">Проверь: есть ли записи в dbo.vw_products.</div>
+            <div class="muted">Проверь: есть ли записи в dbo.vw_products и is_active = 1.</div>
         </div>
     {% else %}
-        <div class="grid">
+        <div class="grid" id="grid">
             {% for p in products %}
-            <a class="card" href="/product/{{ p.product_id }}">
+            <a class="card"
+               href="/product/{{ p.product_id }}"
+               data-name="{{ (p.name or '')|lower }}"
+               data-desc="{{ (p.description or '')|lower }}"
+               data-brand="{{ (p.brand_name or '')|lower }}"
+               data-cat="{{ (p.category_name or '')|lower }}"
+            >
                 <img class="thumb"
                      src="/product_image/{{ p.product_id }}"
                      alt=""
@@ -231,6 +232,42 @@
     {% endif %}
 
 </div>
+
+<script>
+(function(){
+    const input = document.getElementById("searchInput");
+    const cards = Array.from(document.querySelectorAll(".card"));
+    const hint = document.getElementById("searchHint");
+
+    function norm(s){ return (s || "").toString().trim().toLowerCase(); }
+
+    function apply(){
+        const q = norm(input.value);
+        let shown = 0;
+
+        cards.forEach(card => {
+            const hay =
+                (card.dataset.name || "") + " " +
+                (card.dataset.desc || "") + " " +
+                (card.dataset.brand || "") + " " +
+                (card.dataset.cat || "");
+
+            const ok = q === "" || hay.includes(q);
+            card.style.display = ok ? "" : "none";
+            if(ok) shown++;
+        });
+
+        if(hint){
+            hint.textContent = q ? ("Найдено: " + shown) : "";
+        }
+    }
+
+    if(input){
+        input.addEventListener("input", apply);
+        apply();
+    }
+})();
+</script>
 
 </body>
 </html>

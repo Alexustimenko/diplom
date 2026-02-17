@@ -18,15 +18,36 @@ def _require_admin():
 
 @auth_bp.route("/")
 def index():
+    q = request.args.get("q", "").strip()
+
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM dbo.vw_products ORDER BY product_id DESC")
+
+    if q:
+        like = f"%{q}%"
+        # строго через VIEW
+        cur.execute(
+            """
+            SELECT * FROM dbo.vw_products
+            WHERE
+                (name LIKE ?)
+                OR (description LIKE ?)
+                OR (brand_name LIKE ?)
+                OR (category_name LIKE ?)
+            ORDER BY product_id DESC
+            """,
+            like, like, like, like
+        )
+    else:
+        cur.execute("SELECT * FROM dbo.vw_products ORDER BY product_id DESC")
+
     products = cur.fetchall()
     conn.close()
-    return render_template("index.html", products=products)
+
+    return render_template("index.html", products=products, q=q)
 
 
-# ✅ Страница товара (Вариант B: галерея по всем image_id)
+# ✅ Страница товара (галерея по всем image_id)
 @auth_bp.route("/product/<int:pid>")
 def product(pid):
     conn = get_conn()
@@ -38,9 +59,8 @@ def product(pid):
         conn.close()
         return "Not Found", 404
 
-    # ✅ ВАЖНО: передаём именно images, чтобы шаблон product.html увидел переменную images
     cur.execute("SELECT image_id FROM dbo.images WHERE product_id = ? ORDER BY image_id DESC", pid)
-    images = cur.fetchall()  # список строк, где im[0] = image_id
+    images = cur.fetchall()  # [(image_id,), ...]
 
     conn.close()
     return render_template("product.html", p=p, images=images)
@@ -66,7 +86,6 @@ def product_image(pid):
     return send_file(io.BytesIO(data), mimetype="image/jpeg")
 
 
-# ✅ Картинка по image_id (для галереи)
 @auth_bp.route("/image/<int:image_id>")
 def image_by_id(image_id):
     conn = get_conn()
