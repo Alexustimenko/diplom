@@ -1,7 +1,4 @@
-# ============================
 # app/routes/auth.py
-# (обновление: товары + BLOB-картинки)
-# ============================
 from flask import Blueprint, render_template, request, redirect, url_for, session, send_file
 from app.db import get_conn
 import bcrypt
@@ -134,14 +131,12 @@ def admin():
         # ---------- BRANDS ----------
         if action == "add_brand":
             brand_name = request.form.get("brand_name", "").strip()
-
             if not brand_name:
                 error = "Название бренда не может быть пустым"
             else:
                 cur.execute("EXEC dbo.sp_add_brand ?", brand_name)
                 res = cur.fetchone()[0]
                 conn.commit()
-
                 if res == -1:
                     error = "Такой бренд уже существует"
                 else:
@@ -150,14 +145,12 @@ def admin():
         elif action == "edit_brand":
             brand_id = request.form.get("brand_id", "").strip()
             brand_name = request.form.get("brand_name", "").strip()
-
             if not brand_id.isdigit() or not brand_name:
-                error = "Некорректные данные для редактирования"
+                error = "Некорректные данные для редактирования бренда"
             else:
                 cur.execute("EXEC dbo.sp_update_brand ?, ?", int(brand_id), brand_name)
                 res = cur.fetchone()[0]
                 conn.commit()
-
                 if res == -1:
                     error = "Такое название уже занято другим брендом"
                 elif res == -2:
@@ -167,14 +160,12 @@ def admin():
 
         elif action == "delete_brand":
             brand_id = request.form.get("brand_id", "").strip()
-
             if not brand_id.isdigit():
                 error = "Некорректный id бренда"
             else:
                 cur.execute("EXEC dbo.sp_delete_brand ?", int(brand_id))
                 res = cur.fetchone()[0]
                 conn.commit()
-
                 if res == -2:
                     error = "Бренд не найден"
                 elif res == -3:
@@ -194,7 +185,6 @@ def admin():
                 cur.execute("EXEC dbo.sp_add_category ?, ?", name, parent_id)
                 res = cur.fetchone()[0]
                 conn.commit()
-
                 if res == -1:
                     error = "Категория с таким названием уже существует"
                 elif res == -2:
@@ -214,7 +204,6 @@ def admin():
                 cur.execute("EXEC dbo.sp_update_category ?, ?, ?", int(cat_id), name, parent_id)
                 res = cur.fetchone()[0]
                 conn.commit()
-
                 if res == -1:
                     error = "Категория с таким названием уже существует"
                 elif res == -2:
@@ -228,14 +217,12 @@ def admin():
 
         elif action == "delete_category":
             cat_id = request.form.get("category_id", "").strip()
-
             if not cat_id.isdigit():
                 error = "Некорректный id категории"
             else:
                 cur.execute("EXEC dbo.sp_delete_category ?", int(cat_id))
                 res = cur.fetchone()[0]
                 conn.commit()
-
                 if res == -2:
                     error = "Категория не найдена"
                 elif res == -3:
@@ -245,10 +232,12 @@ def admin():
                 else:
                     success = "Категория удалена"
 
-        # ---------- PRODUCTS (NEW) ----------
+        # ---------- PRODUCTS ----------
         elif action == "add_product":
             name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip()
             price = request.form.get("price", "").strip()
+            old_price = request.form.get("old_price", "").strip()
             stock = request.form.get("stock", "").strip()
             category_id = request.form.get("category_id", "").strip()
             brand_id = request.form.get("brand_id", "").strip()
@@ -258,8 +247,13 @@ def admin():
             else:
                 cat_val = None if category_id in ("", "null", "None") else int(category_id)
                 brand_val = None if brand_id in ("", "null", "None") else int(brand_id)
+                desc_val = None if description == "" else description
+                old_price_val = None if old_price == "" else old_price
 
-                cur.execute("EXEC dbo.sp_add_product ?, ?, ?, ?, ?", name, price, stock, cat_val, brand_val)
+                cur.execute(
+                    "EXEC dbo.sp_add_product ?, ?, ?, ?, ?, ?, ?",
+                    name, desc_val, price, old_price_val, int(stock), cat_val, brand_val
+                )
                 pid = cur.fetchone()[0]
 
                 files = request.files.getlist("images")
@@ -269,6 +263,62 @@ def admin():
 
                 conn.commit()
                 success = "Товар добавлен"
+
+        elif action == "edit_product":
+            product_id = request.form.get("product_id", "").strip()
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip()
+            price = request.form.get("price", "").strip()
+            old_price = request.form.get("old_price", "").strip()
+            stock = request.form.get("stock", "").strip()
+            category_id = request.form.get("category_id", "").strip()
+            brand_id = request.form.get("brand_id", "").strip()
+            replace_images = (request.form.get("replace_images") == "1")
+
+            if (not product_id.isdigit()) or (not name) or (not price) or (not stock):
+                error = "Некорректные данные для редактирования товара"
+            else:
+                cat_val = None if category_id in ("", "null", "None") else int(category_id)
+                brand_val = None if brand_id in ("", "null", "None") else int(brand_id)
+                desc_val = None if description == "" else description
+                old_price_val = None if old_price == "" else old_price
+
+                cur.execute(
+                    "EXEC dbo.sp_update_product ?, ?, ?, ?, ?, ?, ?, ?",
+                    int(product_id), name, desc_val, price, old_price_val, int(stock), cat_val, brand_val
+                )
+                res = cur.fetchone()[0]
+
+                if res == -2:
+                    error = "Товар не найден"
+                else:
+                    files = request.files.getlist("images")
+                    has_new = any(f and f.filename for f in files)
+
+                    if has_new and replace_images:
+                        cur.execute("EXEC dbo.sp_delete_product_images ?", int(product_id))
+                        cur.fetchone()
+
+                    if has_new:
+                        for f in files:
+                            if f and f.filename:
+                                cur.execute("EXEC dbo.sp_add_product_image ?, ?", int(product_id), f.read())
+
+                    conn.commit()
+                    success = "Товар обновлён"
+
+        elif action == "delete_product":
+            product_id = request.form.get("product_id", "").strip()
+            if not product_id.isdigit():
+                error = "Некорректный id товара"
+            else:
+                cur.execute("EXEC dbo.sp_delete_product ?", int(product_id))
+                res = cur.fetchone()[0]
+                conn.commit()
+                if res == -2:
+                    error = "Товар не найден"
+                else:
+                    success = "Товар удалён"
 
     # списки для страниц
     cur.execute("SELECT id_brand, name FROM dbo.vw_brands ORDER BY id_brand DESC")

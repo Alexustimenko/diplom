@@ -1,7 +1,4 @@
-<!-- ============================
-     app/templates/admin.html
-     (обновление: блок товаров + загрузка нескольких BLOB-картинок)
-     ============================ -->
+<!-- app/templates/admin.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -47,12 +44,19 @@
 
         .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 
-        input, select{
+        input, select, textarea{
             padding:10px;
             border:2px solid var(--cyan);
             border-radius:10px;
+            font-family: Arial, sans-serif;
         }
         input{ width:260px; }
+        textarea{
+            width: 100%;
+            max-width: 980px;
+            min-height: 90px;
+            resize: vertical;
+        }
 
         table{ width:100%; border-collapse:collapse; margin-top:14px; }
         th, td{ padding:10px; border-bottom:1px solid #e8e8e8; text-align:left; vertical-align:middle; }
@@ -67,6 +71,49 @@
         .chip{ background:var(--cyan); color:white; padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px; }
 
         img.thumb{ width:60px; height:60px; object-fit:cover; border-radius:10px; border:2px solid #e8e8e8; }
+
+        details summary { list-style:none; }
+        details summary::-webkit-details-marker { display:none; }
+
+        .actions{
+            display:flex;
+            gap:18px;
+            align-items:flex-start;
+            flex-wrap:wrap;
+        }
+
+        .edit-form{
+            margin-top:12px;
+        }
+
+        .edit-form .row{
+            gap:14px;
+            margin-top:12px;
+        }
+
+        .edit-form .row:last-child{
+            margin-top:14px;
+        }
+
+        .edit-form button.btn.primary{
+            margin-left:10px;
+        }
+
+        .edit-form input[type="file"]{
+            width:260px;
+        }
+
+        .desc-wrap{
+            width:100%;
+        }
+
+        .desc-cell{
+            max-width: 340px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color:#0b3b3b;
+        }
     </style>
 </head>
 
@@ -83,6 +130,13 @@
     </div>
 
     <div class="wrap">
+
+        {% if error %}
+            <div class="card"><div class="msg err">{{ error }}</div></div>
+        {% endif %}
+        {% if success %}
+            <div class="card"><div class="msg ok">{{ success }}</div></div>
+        {% endif %}
 
         <!-- BRANDS -->
         <div class="card">
@@ -109,28 +163,30 @@
                     <td>{{ b.id_brand }}</td>
                     <td>{{ b.name }}</td>
                     <td>
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="edit_brand">
-                            <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
-                            <input type="hidden" name="brand_name" id="edit_name_{{ b.id_brand }}">
-                            <button class="btn" type="button"
-                                onclick="
-                                    const v = prompt('Новое название бренда:', '{{ b.name }}');
-                                    if(v && v.trim().length > 0){
-                                        document.getElementById('edit_name_{{ b.id_brand }}').value = v.trim();
-                                        this.form.submit();
-                                    }
-                                "
-                            >Редактировать</button>
-                        </form>
+                        <div class="actions">
+                            <form method="POST">
+                                <input type="hidden" name="action" value="edit_brand">
+                                <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
+                                <input type="hidden" name="brand_name" id="edit_name_{{ b.id_brand }}">
+                                <button class="btn" type="button"
+                                    onclick="
+                                        const v = prompt('Новое название бренда:', '{{ b.name }}');
+                                        if(v && v.trim().length > 0){
+                                            document.getElementById('edit_name_{{ b.id_brand }}').value = v.trim();
+                                            this.form.submit();
+                                        }
+                                    "
+                                >Редактировать</button>
+                            </form>
 
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="delete_brand">
-                            <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
-                            <button class="btn primary" type="submit"
-                                onclick="return confirm('Удалить бренд {{ b.name }}?');"
-                            >Удалить</button>
-                        </form>
+                            <form method="POST">
+                                <input type="hidden" name="action" value="delete_brand">
+                                <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
+                                <button class="btn primary" type="submit"
+                                    onclick="return confirm('Удалить бренд {{ b.name }}?');"
+                                >Удалить</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -172,81 +228,82 @@
                     <td>{{ c.name }}</td>
                     <td>{{ c.parent_name if c.parent_name else "-" }}</td>
                     <td>
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="edit_category">
-                            <input type="hidden" name="category_id" value="{{ c.category_id }}">
+                        <div class="actions">
+                            <form method="POST">
+                                <input type="hidden" name="action" value="edit_category">
+                                <input type="hidden" name="category_id" value="{{ c.category_id }}">
 
-                            <input type="hidden" name="category_name" id="cat_name_{{ c.category_id }}">
-                            <input type="hidden" name="parent_id" id="cat_parent_{{ c.category_id }}">
+                                <input type="hidden" name="category_name" id="cat_name_{{ c.category_id }}">
+                                <input type="hidden" name="parent_id" id="cat_parent_{{ c.category_id }}">
 
-                            <button class="btn" type="button"
-                                onclick="
-                                    const newName = prompt('Новое название категории:', '{{ c.name }}');
-                                    if(!newName || newName.trim().length === 0) return;
+                                <button class="btn" type="button"
+                                    onclick="
+                                        const newName = prompt('Новое название категории:', '{{ c.name }}');
+                                        if(!newName || newName.trim().length === 0) return;
 
-                                    const parentHint = 'Введите ID родителя (пусто = без родителя).\\nТекущий parent_id: {{ c.parent_id if c.parent_id else '' }}';
-                                    const newParent = prompt(parentHint, '{{ c.parent_id if c.parent_id else '' }}');
-                                    const parentValue = (newParent === null) ? null : newParent.trim();
+                                        const parentHint = 'Введите ID родителя (пусто = без родителя).\\nТекущий parent_id: {{ c.parent_id if c.parent_id else '' }}';
+                                        const newParent = prompt(parentHint, '{{ c.parent_id if c.parent_id else '' }}');
+                                        const parentValue = (newParent === null) ? '' : newParent.trim();
 
-                                    document.getElementById('cat_name_{{ c.category_id }}').value = newName.trim();
-                                    document.getElementById('cat_parent_{{ c.category_id }}').value = parentValue;
-                                    this.form.submit();
-                                "
-                            >Редактировать</button>
-                        </form>
+                                        document.getElementById('cat_name_{{ c.category_id }}').value = newName.trim();
+                                        document.getElementById('cat_parent_{{ c.category_id }}').value = parentValue;
+                                        this.form.submit();
+                                    "
+                                >Редактировать</button>
+                            </form>
 
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="delete_category">
-                            <input type="hidden" name="category_id" value="{{ c.category_id }}">
-                            <button class="btn primary" type="submit"
-                                onclick="return confirm('Удалить категорию {{ c.name }}?');"
-                            >Удалить</button>
-                        </form>
+                            <form method="POST">
+                                <input type="hidden" name="action" value="delete_category">
+                                <input type="hidden" name="category_id" value="{{ c.category_id }}">
+                                <button class="btn primary" type="submit"
+                                    onclick="return confirm('Удалить категорию {{ c.name }}?');"
+                                >Удалить</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
             </table>
         </div>
 
-        <!-- GLOBAL MESSAGES -->
-        {% if error %}
-            <div class="card"><div class="msg err">{{ error }}</div></div>
-        {% endif %}
-        {% if success %}
-            <div class="card"><div class="msg ok">{{ success }}</div></div>
-        {% endif %}
-
-        <!-- PRODUCTS (NEW) -->
+        <!-- PRODUCTS -->
         <div class="card">
             <div class="section-title">
                 <h2>Товары</h2>
-                <p class="muted">Добавление товара + несколько картинок (BLOB)</p>
+                <p class="muted">Добавление / Редактирование / Удаление + несколько картинок (BLOB)</p>
             </div>
 
-            <form method="POST" enctype="multipart/form-data" class="row">
+            <!-- ADD PRODUCT -->
+            <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="add_product">
 
-                <input name="name" placeholder="Название" required>
-                <input name="price" placeholder="Цена" required>
-                <input name="stock" placeholder="Количество" required>
+                <div class="row">
+                    <input name="name" placeholder="Название" required>
+                    <input name="price" placeholder="Цена" required>
+                    <input name="old_price" placeholder="Старая цена (опц.)">
+                    <input name="stock" placeholder="Количество" required>
 
-                <select name="category_id">
-                    <option value="">(категория не выбрана)</option>
-                    {% for c in categories %}
-                        <option value="{{ c.category_id }}">{{ c.name }}</option>
-                    {% endfor %}
-                </select>
+                    <select name="category_id">
+                        <option value="">(категория не выбрана)</option>
+                        {% for c in categories %}
+                            <option value="{{ c.category_id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
 
-                <select name="brand_id">
-                    <option value="">(бренд не выбран)</option>
-                    {% for b in brands %}
-                        <option value="{{ b.id_brand }}">{{ b.name }}</option>
-                    {% endfor %}
-                </select>
+                    <select name="brand_id">
+                        <option value="">(бренд не выбран)</option>
+                        {% for b in brands %}
+                            <option value="{{ b.id_brand }}">{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
 
-                <input type="file" name="images" multiple>
+                    <input type="file" name="images" multiple>
+                    <button class="btn primary" type="submit">Добавить товар</button>
+                </div>
 
-                <button class="btn primary" type="submit">Добавить товар</button>
+                <div class="desc-wrap" style="margin-top:12px;">
+                    <textarea name="description" placeholder="Описание (опционально)"></textarea>
+                </div>
             </form>
 
             <table>
@@ -254,23 +311,87 @@
                     <th>ID</th>
                     <th>Фото</th>
                     <th>Название</th>
+                    <th>Описание</th>
                     <th>Цена</th>
+                    <th>Старая цена</th>
                     <th>Кол-во</th>
                     <th>Категория</th>
                     <th>Бренд</th>
+                    <th style="width:360px;">Действия</th>
                 </tr>
 
                 {% for p in products %}
                 <tr>
                     <td>{{ p.product_id }}</td>
-                    <td>
-                        <img class="thumb" src="/product_image/{{ p.product_id }}" alt="">
-                    </td>
+                    <td><img class="thumb" src="/product_image/{{ p.product_id }}" alt=""></td>
                     <td>{{ p.name }}</td>
+                    <td class="desc-cell" title="{{ p.description if p.description else '' }}">
+                        {{ p.description if p.description else "-" }}
+                    </td>
                     <td>{{ p.price }}</td>
+                    <td>{{ p.old_price if p.old_price else "-" }}</td>
                     <td>{{ p.stock_quantity }}</td>
                     <td>{{ p.category_name if p.category_name else "-" }}</td>
                     <td>{{ p.brand_name if p.brand_name else "-" }}</td>
+                    <td>
+                        <div class="actions">
+                            <!-- EDIT -->
+                            <details>
+                                <summary class="btn">Редактировать</summary>
+                                <form method="POST" enctype="multipart/form-data" class="edit-form">
+                                    <input type="hidden" name="action" value="edit_product">
+                                    <input type="hidden" name="product_id" value="{{ p.product_id }}">
+
+                                    <div class="row">
+                                        <input name="name" value="{{ p.name }}" required>
+                                        <input name="price" value="{{ p.price }}" required>
+                                        <input name="old_price" value="{{ p.old_price if p.old_price else '' }}" placeholder="Старая цена (опц.)">
+                                        <input name="stock" value="{{ p.stock_quantity }}" required>
+
+                                        <select name="category_id">
+                                            <option value="">(категория не выбрана)</option>
+                                            {% for c in categories %}
+                                                <option value="{{ c.category_id }}" {% if p.category_id == c.category_id %}selected{% endif %}>
+                                                    {{ c.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+
+                                        <select name="brand_id">
+                                            <option value="">(бренд не выбран)</option>
+                                            {% for b in brands %}
+                                                <option value="{{ b.id_brand }}" {% if p.id_brand == b.id_brand %}selected{% endif %}>
+                                                    {{ b.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="desc-wrap">
+                                        <textarea name="description" placeholder="Описание (опционально)">{{ p.description if p.description else '' }}</textarea>
+                                    </div>
+
+                                    <div class="row">
+                                        <input type="file" name="images" multiple>
+                                        <label style="display:flex; gap:10px; align-items:center; font-weight:700; color:#0b3b3b;">
+                                            <input type="checkbox" name="replace_images" value="1">
+                                            Заменить картинки (удалить старые)
+                                        </label>
+                                        <button class="btn primary" type="submit">Сохранить</button>
+                                    </div>
+                                </form>
+                            </details>
+
+                            <!-- DELETE -->
+                            <form method="POST">
+                                <input type="hidden" name="action" value="delete_product">
+                                <input type="hidden" name="product_id" value="{{ p.product_id }}">
+                                <button class="btn primary" type="submit"
+                                    onclick="return confirm('Удалить товар {{ p.name }}? Удалятся и картинки!');"
+                                >Удалить</button>
+                            </form>
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </table>
