@@ -87,7 +87,7 @@
             gap:22px;
         }
 
-        /* ✅ карточка кликабельна */
+        /* ✅ карточка кликабельна (DIV, не <a>) */
         .card{
             background:white;
             border-radius:18px;
@@ -99,6 +99,7 @@
             text-decoration:none;
             color:inherit;
             cursor:pointer;
+            transition:transform .08s ease;
         }
         .card:hover{ transform: translateY(-1px); }
         .card:active{ transform: translateY(0px); }
@@ -166,6 +167,8 @@
         {% if session.get("user_id") %}
             <span style="font-weight:900;color:#0b3b3b;">{{ session.get("email") }}</span>
 
+            <a class="btn" href="/cart">Корзина</a>
+
             {% if session.get("is_admin") == 1 %}
                 <a class="btn primary" href="/admin">Админка</a>
             {% else %}
@@ -199,12 +202,12 @@
     {% else %}
         <div class="grid" id="grid">
             {% for p in products %}
-            <a class="card"
-               href="/product/{{ p.product_id }}"
-               data-name="{{ (p.name or '')|lower }}"
-               data-desc="{{ (p.description or '')|lower }}"
-               data-brand="{{ (p.brand_name or '')|lower }}"
-               data-cat="{{ (p.category_name or '')|lower }}"
+            <div class="card"
+                 onclick="window.location.href='/product/{{ p.product_id }}';"
+                 data-name="{{ (p.name or '')|lower }}"
+                 data-desc="{{ (p.description or '')|lower }}"
+                 data-brand="{{ (p.brand_name or '')|lower }}"
+                 data-cat="{{ (p.category_name or '')|lower }}"
             >
                 <img class="thumb"
                      src="/product_image/{{ p.product_id }}"
@@ -226,7 +229,26 @@
                     {% endif %}
                     <div class="price">{{ p.price }}</div>
                 </div>
-            </a>
+
+                <!-- ✅ КНОПКА В КОРЗИНУ (только для авторизованных) -->
+                <div style="margin-top:14px;">
+                    {% if session.get("user_id") %}
+                        <form method="POST" action="/cart/add/{{ p.product_id }}"
+                              style="margin:0;"
+                              onclick="event.stopPropagation();">
+                            <input type="hidden" name="qty" value="1">
+                            <button class="btn primary" type="submit" style="width:100%;">В корзину</button>
+                        </form>
+                    {% else %}
+                        <a class="btn primary"
+                           href="/login"
+                           style="width:100%; text-align:center;"
+                           onclick="event.stopPropagation();">
+                            Войти, чтобы купить
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
             {% endfor %}
         </div>
     {% endif %}
