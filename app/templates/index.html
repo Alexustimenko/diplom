@@ -79,11 +79,16 @@
             font-weight:700;
         }
 
-        /* ✅ больше карточки */
         .grid{
             display:grid;
             grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));
             gap:22px;
+        }
+
+        .card-link{
+            text-decoration:none;
+            color:inherit;
+            display:block;
         }
 
         .card{
@@ -94,9 +99,13 @@
             display:flex;
             flex-direction:column;
             min-height:420px;
+            transition:transform .12s ease, box-shadow .12s ease;
+        }
+        .card-link:hover .card{
+            transform:translateY(-2px);
+            box-shadow:0 14px 30px rgba(0,0,0,.22);
         }
 
-        /* ✅ картинка не обрезается, а помещается */
         .thumb{
             width:100%;
             height:260px;
@@ -186,10 +195,10 @@
 
     <div class="hero">
         <h1>Каталог офисных товаров</h1>
-        <p>Дальше подключим фильтры, пагинацию и подбор/сравнение.</p>
+        <p>Нажми на карточку товара — откроется страница с полной информацией и галереей.</p>
     </div>
 
-    {% if products is none or products == [] %}
+    {% if not products or products|length == 0 %}
         <div class="empty">
             Товары не найдены.
             <div class="muted">Проверь: есть ли записи в dbo.vw_products и is_active = 1.</div>
@@ -197,29 +206,30 @@
     {% else %}
         <div class="grid">
             {% for p in products %}
-            <div class="card">
-                <img class="thumb"
-                     src="/product_image/{{ p.product_id }}"
-                     alt=""
-                     onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22240%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23f2f2f2%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-family=%22Arial%22 font-size=%2216%22>No image</text></svg>';">
+            <a class="card-link" href="{{ url_for('auth.product', product_id=p.product_id) }}">
+                <div class="card">
+                    <img class="thumb"
+                         src="/product_image/{{ p.product_id }}"
+                         alt=""
+                         onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22240%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23f2f2f2%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-family=%22Arial%22 font-size=%2216%22>No image</text></svg>';">
+                    <div class="name">{{ p.name }}</div>
 
-                <div class="name">{{ p.name }}</div>
+                    <div class="desc" title="{{ p.description if p.description else '' }}">
+                        {{ p.description if p.description else "" }}
+                    </div>
 
-                <div class="desc" title="{{ p.description if p.description else '' }}">
-                    {{ p.description if p.description else "" }}
+                    <div class="meta">
+                        {{ p.category_name if p.category_name else "-" }} / {{ p.brand_name if p.brand_name else "-" }}
+                    </div>
+
+                    <div class="prices">
+                        {% if p.old_price %}
+                            <div class="old">{{ p.old_price }}</div>
+                        {% endif %}
+                        <div class="price">{{ p.price }}</div>
+                    </div>
                 </div>
-
-                <div class="meta">
-                    {{ p.category_name if p.category_name else "-" }} / {{ p.brand_name if p.brand_name else "-" }}
-                </div>
-
-                <div class="prices">
-                    {% if p.old_price %}
-                        <div class="old">{{ p.old_price }}</div>
-                    {% endif %}
-                    <div class="price">{{ p.price }}</div>
-                </div>
-            </div>
+            </a>
             {% endfor %}
         </div>
     {% endif %}
