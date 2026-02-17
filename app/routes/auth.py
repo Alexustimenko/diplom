@@ -6,6 +6,16 @@ import io
 
 auth_bp = Blueprint("auth", __name__)
 
+@auth_bp.route("/")
+def index():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM dbo.vw_products ORDER BY product_id DESC")
+    products = cur.fetchall()
+    conn.close()
+    return render_template("index.html", products=products)
+
+
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -128,7 +138,6 @@ def admin():
     if request.method == "POST":
         action = request.form.get("action")
 
-        # ---------- BRANDS ----------
         if action == "add_brand":
             brand_name = request.form.get("brand_name", "").strip()
             if not brand_name:
@@ -173,7 +182,6 @@ def admin():
                 else:
                     success = "Бренд удалён"
 
-        # ---------- CATEGORIES ----------
         elif action == "add_category":
             name = request.form.get("category_name", "").strip()
             parent_raw = request.form.get("parent_id", "").strip()
@@ -232,7 +240,6 @@ def admin():
                 else:
                     success = "Категория удалена"
 
-        # ---------- PRODUCTS ----------
         elif action == "add_product":
             name = request.form.get("name", "").strip()
             description = request.form.get("description", "").strip()
@@ -320,7 +327,6 @@ def admin():
                 else:
                     success = "Товар удалён"
 
-    # списки для страниц
     cur.execute("SELECT id_brand, name FROM dbo.vw_brands ORDER BY id_brand DESC")
     brands = cur.fetchall()
 
