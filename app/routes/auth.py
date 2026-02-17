@@ -1,10 +1,28 @@
 # app/routes/auth.py
-from flask import Blueprint, render_template, request, redirect, url_for, session, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, session, send_file, abort
 from app.db import get_conn
 import bcrypt
 import io
 
 auth_bp = Blueprint("auth", __name__)
+
+def _guess_mime(b: bytes) -> str:
+    if not b:
+        return "application/octet-stream"
+    # JPEG
+    if b.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    # PNG
+    if b.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    # GIF
+    if b.startswith(b"GIF87a") or b.startswith(b"GIF89a"):
+        return "image/gif"
+    # WEBP (RIFF....WEBP)
+    if len(b) >= 12 and b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+        return "image/webp"
+    return "application/octet-stream"
+
 
 @auth_bp.route("/")
 def index():
@@ -14,6 +32,29 @@ def index():
     products = cur.fetchall()
     conn.close()
     return render_template("index.html", products=products)
+
+
+@auth_bp.route("/product/<int:product_id>")
+def product(product_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # товар — строго через VIEW
+    cur.execute("SELECT TOP 1 * FROM dbo.vw_products WHERE product_id = ?", product_id)
+    p = cur.fetchone()
+    if not p:
+        conn.close()
+        abort(404)
+
+    # все картинки товара — строго через VIEW
+    cur.execute(
+        "SELECT image_id, product_id FROM dbo.vw_product_images WHERE product_id = ? ORDER BY image_id ASC",
+        product_id
+    )
+    images = cur.fetchall()
+
+    conn.close()
+    return render_template("product.html", p=p, images=images)
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])
@@ -108,6 +149,7 @@ def cabinet():
     )
 
 
+# 1) Для карточек/админки: показываем последнюю картинку товара
 @auth_bp.route("/product_image/<int:pid>")
 def product_image(pid):
     conn = get_conn()
@@ -119,7 +161,24 @@ def product_image(pid):
     if not row:
         return "", 404
 
-    return send_file(io.BytesIO(row[0]), mimetype="image/jpeg")
+    data = row[0]
+    return send_file(io.BytesIO(data), mimetype=_guess_mime(data))
+
+
+# 2) Для страницы товара: отдаём конкретную картинку по image_id
+@auth_bp.route("/product_image_id/<int:image_id>")
+def product_image_id(image_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT image_data FROM dbo.images WHERE image_id = ?", image_id)
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return "", 404
+
+    data = row[0]
+    return send_file(io.BytesIO(data), mimetype=_guess_mime(data))
 
 
 @auth_bp.route("/admin", methods=["GET", "POST"])
