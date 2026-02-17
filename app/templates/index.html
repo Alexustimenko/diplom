@@ -79,6 +79,26 @@
             font-weight:700;
         }
 
+        .search-row{
+            display:flex;
+            gap:10px;
+            margin-top:14px;
+            flex-wrap:wrap;
+            align-items:center;
+        }
+        .search-input{
+            flex:1;
+            min-width:240px;
+            padding:12px 14px;
+            border-radius:12px;
+            border:2px solid var(--cyan);
+            font-weight:800;
+            color:#0b3b3b;
+            outline:none;
+        }
+        .hint{ margin-top:10px; color:#2f5f5f; font-weight:800; font-size:12px; }
+
+        /* ✅ больше карточки */
         .grid{
             display:grid;
             grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));
@@ -195,46 +215,160 @@
 
     <div class="hero">
         <h1>Каталог офисных товаров</h1>
-        <p>Нажми на карточку товара — откроется страница с полной информацией и галереей.</p>
+        <p>Вводи в поиск — результаты обновляются автоматически.</p>
+
+        <!-- ✅ динамический поиск -->
+        <div class="search-row">
+            <input id="q" class="search-input" type="text" placeholder="Поиск по товарам (название или описание)…">
+            <a id="clearBtn" class="btn" href="javascript:void(0)" style="display:none;">Сброс</a>
+        </div>
+        <div id="hint" class="hint">Можно искать по названию и описанию.</div>
     </div>
 
-    {% if not products or products|length == 0 %}
-        <div class="empty">
-            Товары не найдены.
-            <div class="muted">Проверь: есть ли записи в dbo.vw_products и is_active = 1.</div>
-        </div>
-    {% else %}
-        <div class="grid">
-            {% for p in products %}
-            <a class="card-link" href="{{ url_for('auth.product', product_id=p.product_id) }}">
-                <div class="card">
-                    <img class="thumb"
-                         src="/product_image/{{ p.product_id }}"
-                         alt=""
-                         onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22240%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23f2f2f2%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-family=%22Arial%22 font-size=%2216%22>No image</text></svg>';">
-                    <div class="name">{{ p.name }}</div>
+    <div id="empty" class="empty" style="display:none;">
+        Ничего не найдено.
+        <div class="muted">Попробуй другое слово.</div>
+    </div>
 
-                    <div class="desc" title="{{ p.description if p.description else '' }}">
-                        {{ p.description if p.description else "" }}
-                    </div>
-
-                    <div class="meta">
-                        {{ p.category_name if p.category_name else "-" }} / {{ p.brand_name if p.brand_name else "-" }}
-                    </div>
-
-                    <div class="prices">
-                        {% if p.old_price %}
-                            <div class="old">{{ p.old_price }}</div>
-                        {% endif %}
-                        <div class="price">{{ p.price }}</div>
-                    </div>
+    <div id="grid" class="grid">
+        {% for p in products %}
+        <a class="card-link" href="/product/{{ p.product_id }}">
+            <div class="card">
+                <img class="thumb"
+                     src="/product_image/{{ p.product_id }}"
+                     alt=""
+                     onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22240%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23f2f2f2%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-family=%22Arial%22 font-size=%2216%22>No image</text></svg>';">
+                <div class="name">{{ p.name }}</div>
+                <div class="desc" title="{{ p.description if p.description else '' }}">
+                    {{ p.description if p.description else "" }}
                 </div>
-            </a>
-            {% endfor %}
-        </div>
-    {% endif %}
+                <div class="meta">
+                    {{ p.category_name if p.category_name else "-" }} / {{ p.brand_name if p.brand_name else "-" }}
+                </div>
+                <div class="prices">
+                    {% if p.old_price %}
+                        <div class="old">{{ p.old_price }}</div>
+                    {% endif %}
+                    <div class="price">{{ p.price }}</div>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
 
 </div>
+
+<script>
+(function(){
+    const qEl = document.getElementById("q");
+    const grid = document.getElementById("grid");
+    const empty = document.getElementById("empty");
+    const hint = document.getElementById("hint");
+    const clearBtn = document.getElementById("clearBtn");
+
+    let timer = null;
+    let lastController = null;
+
+    function escapeHtml(s){
+        return (s ?? "").toString()
+            .replaceAll("&","&amp;")
+            .replaceAll("<","&lt;")
+            .replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;")
+            .replaceAll("'","&#039;");
+    }
+
+    function money(v){
+        if(v === null || v === undefined) return "";
+        // без локали/валюты — просто аккуратно
+        const n = Number(v);
+        if(Number.isNaN(n)) return escapeHtml(v);
+        return n.toFixed(2);
+    }
+
+    function noImageSvg(){
+        return "data:image/svg+xml;utf8," +
+            "<svg xmlns='http://www.w3.org/2000/svg' width='400' height='240'>" +
+            "<rect width='100%25' height='100%25' fill='%23f2f2f2'/>" +
+            "<text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-family='Arial' font-size='16'>No image</text>" +
+            "</svg>";
+    }
+
+    function render(products){
+        if(!products || products.length === 0){
+            grid.innerHTML = "";
+            empty.style.display = "block";
+            return;
+        }
+
+        empty.style.display = "none";
+
+        const html = products.map(p => {
+            const name = escapeHtml(p.name);
+            const desc = escapeHtml(p.description || "");
+            const meta = escapeHtml((p.category_name || "-") + " / " + (p.brand_name || "-"));
+
+            const oldPrice = p.old_price ? `<div class="old">${money(p.old_price)}</div>` : "";
+            const price = `<div class="price">${money(p.price)}</div>`;
+
+            return `
+                <a class="card-link" href="/product/${p.product_id}">
+                    <div class="card">
+                        <img class="thumb"
+                             src="/product_image/${p.product_id}"
+                             alt=""
+                             onerror="this.onerror=null;this.src='${noImageSvg()}'">
+                        <div class="name">${name}</div>
+                        <div class="desc" title="${desc}">${desc}</div>
+                        <div class="meta">${meta}</div>
+                        <div class="prices">${oldPrice}${price}</div>
+                    </div>
+                </a>
+            `;
+        }).join("");
+
+        grid.innerHTML = html;
+    }
+
+    async function load(){
+        const q = qEl.value.trim();
+        hint.textContent = q ? `Поиск: “${q}”` : "Можно искать по названию и описанию.";
+        clearBtn.style.display = q ? "inline-block" : "none";
+
+        if(lastController) lastController.abort();
+        lastController = new AbortController();
+
+        const url = q ? `/api/products?q=${encodeURIComponent(q)}` : `/api/products`;
+
+        try{
+            const res = await fetch(url, { signal:lastController.signal });
+            if(!res.ok) throw new Error("HTTP " + res.status);
+            const data = await res.json();
+            render(data);
+        }catch(e){
+            if(e.name === "AbortError") return;
+            // если упало — хотя бы не ломаем страницу
+            console.error(e);
+        }
+    }
+
+    function schedule(){
+        if(timer) clearTimeout(timer);
+        timer = setTimeout(load, 250);
+    }
+
+    qEl.addEventListener("input", schedule);
+
+    clearBtn.addEventListener("click", () => {
+        qEl.value = "";
+        load();
+        qEl.focus();
+    });
+
+    // initial
+    load();
+})();
+</script>
 
 </body>
 </html>
