@@ -1,5 +1,5 @@
 # app/routes/auth.py
-from flask import Blueprint, render_template, request, redirect, url_for, session, send_file, abort
+from flask import Blueprint, render_template, request, redirect, url_for, session, send_file, abort, jsonify
 from app.db import get_conn
 import bcrypt
 import io
@@ -9,16 +9,12 @@ auth_bp = Blueprint("auth", __name__)
 def _guess_mime(b: bytes) -> str:
     if not b:
         return "application/octet-stream"
-    # JPEG
     if b.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
-    # PNG
     if b.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
-    # GIF
     if b.startswith(b"GIF87a") or b.startswith(b"GIF89a"):
         return "image/gif"
-    # WEBP (RIFF....WEBP)
     if len(b) >= 12 and b[:4] == b"RIFF" and b[8:12] == b"WEBP":
         return "image/webp"
     return "application/octet-stream"
@@ -34,19 +30,69 @@ def index():
     return render_template("index.html", products=products)
 
 
+@auth_bp.route("/api/products")
+def api_products():
+    q = (request.args.get("q") or "").strip()
+    conn = get_conn()
+    cur = conn.cursor()
+
+    if q:
+        like = f"%{q}%"
+        cur.execute(
+            """
+            SELECT
+                product_id, name, description, price, old_price,
+                stock_quantity, category_id, category_name,
+                id_brand, brand_name
+            FROM dbo.vw_products
+            WHERE (name LIKE ? OR description LIKE ?)
+            ORDER BY product_id DESC
+            """,
+            like, like
+        )
+    else:
+        cur.execute(
+            """
+            SELECT
+                product_id, name, description, price, old_price,
+                stock_quantity, category_id, category_name,
+                id_brand, brand_name
+            FROM dbo.vw_products
+            ORDER BY product_id DESC
+            """
+        )
+
+    rows = cur.fetchall()
+    conn.close()
+
+    # pyodbc Row -> dict
+    out = []
+    for r in rows:
+        out.append({
+            "product_id": int(r.product_id),
+            "name": r.name,
+            "description": r.description,
+            "price": float(r.price) if r.price is not None else None,
+            "old_price": float(r.old_price) if r.old_price is not None else None,
+            "stock_quantity": int(r.stock_quantity) if r.stock_quantity is not None else None,
+            "category_name": r.category_name,
+            "brand_name": r.brand_name,
+        })
+
+    return jsonify(out)
+
+
 @auth_bp.route("/product/<int:product_id>")
 def product(product_id: int):
     conn = get_conn()
     cur = conn.cursor()
 
-    # товар — строго через VIEW
     cur.execute("SELECT TOP 1 * FROM dbo.vw_products WHERE product_id = ?", product_id)
     p = cur.fetchone()
     if not p:
         conn.close()
         abort(404)
 
-    # все картинки товара — строго через VIEW
     cur.execute(
         "SELECT image_id, product_id FROM dbo.vw_product_images WHERE product_id = ? ORDER BY image_id ASC",
         product_id
@@ -149,7 +195,6 @@ def cabinet():
     )
 
 
-# 1) Для карточек/админки: показываем последнюю картинку товара
 @auth_bp.route("/product_image/<int:pid>")
 def product_image(pid):
     conn = get_conn()
@@ -165,7 +210,6 @@ def product_image(pid):
     return send_file(io.BytesIO(data), mimetype=_guess_mime(data))
 
 
-# 2) Для страницы товара: отдаём конкретную картинку по image_id
 @auth_bp.route("/product_image_id/<int:image_id>")
 def product_image_id(image_id: int):
     conn = get_conn()
