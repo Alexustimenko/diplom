@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Корзина</title>
+    <style>
+        :root{ --orange:#FF7400; --cyan:#33CCCC; }
+        body{ margin:0; background:var(--cyan); font-family:Arial, sans-serif; }
+
+        .topbar{
+            background:white; padding:14px 20px; display:flex; justify-content:space-between; align-items:center;
+            box-shadow:0 6px 16px rgba(0,0,0,0.15);
+        }
+        .logo{ font-weight:900; color:var(--orange); letter-spacing:0.06em; font-size:22px; }
+
+        .btn{
+            display:inline-block; padding:10px 14px; border-radius:10px; border:2px solid var(--cyan);
+            background:white; color:#0b3b3b; font-weight:800; text-decoration:none; cursor:pointer;
+        }
+        .btn.primary{ background:var(--orange); border-color:var(--orange); color:white; }
+        .btn:hover{ opacity:0.92; }
+
+        .wrap{ max-width:1100px; margin:26px auto; padding:0 16px; }
+
+        .card{
+            background:white; border-radius:18px; padding:18px; box-shadow:0 10px 26px rgba(0,0,0,.18);
+        }
+
+        table{ width:100%; border-collapse:collapse; margin-top:12px; }
+        th, td{ padding:12px; border-bottom:1px solid #e8e8e8; text-align:left; vertical-align:middle; }
+        th{ background:var(--orange); color:white; }
+
+        input.qty{
+            width:90px; padding:10px; border:2px solid var(--cyan); border-radius:10px; font-weight:800;
+        }
+
+        .total{
+            margin-top:14px; display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;
+            font-weight:900; color:#0b3b3b; font-size:18px;
+        }
+
+        .muted{ color:#3a6b6b; font-weight:700; }
+
+        .actions{ display:flex; gap:12px; flex-wrap:wrap; margin-top:14px; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="logo">CHAIR SHOP</div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <a class="btn" href="/">Назад в каталог</a>
+    </div>
+</div>
+
+<div class="wrap">
+    <div class="card">
+        <h2 style="margin:0; color:#0b3b3b;">Корзина</h2>
+        <div class="muted" style="margin-top:6px;">Поменяй количество и нажми “Обновить”.</div>
+
+        {% if not items or items|length == 0 %}
+            <div style="margin-top:14px; font-weight:900; color:#0b3b3b;">Корзина пустая.</div>
+        {% else %}
+            <form method="POST" action="/cart/update">
+                <table>
+                    <tr>
+                        <th style="width:80px;">ID</th>
+                        <th>Товар</th>
+                        <th style="width:140px;">Цена</th>
+                        <th style="width:140px;">Кол-во</th>
+                        <th style="width:160px;">Сумма</th>
+                        <th style="width:140px;">Удалить</th>
+                    </tr>
+
+                    {% for it in items %}
+                    <tr>
+                        <td>{{ it.product_id }}</td>
+                        <td>{{ it.name }}</td>
+                        <td>{{ "%.2f"|format(it.price) }}</td>
+                        <td>
+                            <input class="qty" name="qty_{{ it.product_id }}" value="{{ it.qty }}">
+                        </td>
+                        <td>{{ "%.2f"|format(it.line_total) }}</td>
+                        <td>
+                            <form method="POST" action="/cart/remove/{{ it.product_id }}">
+                                <button class="btn" type="submit">Удалить</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+
+                <div class="total">
+                    <div>Итого: {{ "%.2f"|format(total) }}</div>
+                </div>
+
+                <div class="actions">
+                    <button class="btn primary" type="submit">Обновить</button>
+                </div>
+            </form>
+
+            <div class="actions">
+                <form method="POST" action="/cart/clear">
+                    <button class="btn" type="submit">Очистить корзину</button>
+                </form>
+
+                <!-- позже сюда добавим кнопку "Купить" -->
+                <button class="btn primary" type="button" disabled style="opacity:.6; cursor:not-allowed;">
+                    Купить (сделаем следующим шагом)
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+</body>
+</html>

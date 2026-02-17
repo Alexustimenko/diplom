@@ -14,6 +14,11 @@ def _require_admin():
     if session.get("is_admin") != 1:
         return "Forbidden", 403
     return None
+def _require_login():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    return None
+
 
 
 @auth_bp.route("/")
@@ -296,3 +301,115 @@ def export_word():
     buf.seek(0)
 
     return send_file(buf, as_attachment=True, download_name="report.docx")
+# ---------------- CART (only for logged-in) ----------------
+
+def _cart():
+    if "cart" not in session or not isinstance(session.get("cart"), dict):
+        session["cart"] = {}
+    return session["cart"]
+
+@auth_bp.route("/cart")
+def cart():
+    gate = _require_login()
+    if gate:
+        return gate
+
+    cart_map = _cart()  # { "product_id": qty }
+    ids = [int(k) for k in cart_map.keys()] if cart_map else []
+
+    items = []
+    total = 0
+
+    if ids:
+        conn = get_conn()
+        cur = conn.cursor()
+
+        placeholders = ",".join(["?"] * len(ids))
+        cur.execute(f"SELECT * FROM dbo.vw_products WHERE product_id IN ({placeholders})", *ids)
+        rows = cur.fetchall()
+        conn.close()
+
+        by_id = {int(r.product_id): r for r in rows}
+
+        for pid_str, qty in cart_map.items():
+            pid = int(pid_str)
+            p = by_id.get(pid)
+            if not p:
+                continue
+
+            q = int(qty)
+            price = float(p.price) if p.price is not None else 0
+            line = price * q
+            total += line
+
+            items.append({
+                "product_id": pid,
+                "name": p.name,
+                "price": price,
+                "qty": q,
+                "line_total": line
+            })
+
+    return render_template("cart.html", items=items, total=total)
+
+@auth_bp.route("/cart/add/<int:pid>", methods=["POST"])
+def cart_add(pid):
+    gate = _require_login()
+    if gate:
+        return gate
+
+    cart_map = _cart()
+    qty = request.form.get("qty", "1").strip()
+    try:
+        qty_int = max(1, int(qty))
+    except:
+        qty_int = 1
+
+    cart_map[str(pid)] = int(cart_map.get(str(pid), 0)) + qty_int
+    session.modified = True
+    return redirect(request.referrer or "/")
+
+@auth_bp.route("/cart/update", methods=["POST"])
+def cart_update():
+    gate = _require_login()
+    if gate:
+        return gate
+
+    cart_map = _cart()
+    for k, v in request.form.items():
+        if not k.startswith("qty_"):
+            continue
+        pid = k.replace("qty_", "").strip()
+        try:
+            q = int(v)
+        except:
+            q = 1
+
+        if q <= 0:
+            cart_map.pop(pid, None)
+        else:
+            cart_map[pid] = q
+
+    session.modified = True
+    return redirect("/cart")
+
+@auth_bp.route("/cart/remove/<int:pid>", methods=["POST"])
+def cart_remove(pid):
+    gate = _require_login()
+    if gate:
+        return gate
+
+    cart_map = _cart()
+    cart_map.pop(str(pid), None)
+    session.modified = True
+    return redirect("/cart")
+
+@auth_bp.route("/cart/clear", methods=["POST"])
+def cart_clear():
+    gate = _require_login()
+    if gate:
+        return gate
+
+    session["cart"] = {}
+    session.modified = True
+    return redirect("/cart")
