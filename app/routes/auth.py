@@ -229,19 +229,52 @@ def admin_reports():
     if gate:
         return gate
 
+    date_from = request.args.get("from", "").strip()
+    date_to   = request.args.get("to", "").strip()
+
+    # если даты не задали — подставим сегодня
+    if not date_from or not date_to:
+        from datetime import date
+        today = date.today().isoformat()
+        date_from = today
+        date_to = today
+
+    # если пользователь перепутал местами даты — поменяем
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
     conn = get_conn()
     cur = conn.cursor()
 
+    # 0) товары по категориям (старый VIEW)
     cur.execute("SELECT * FROM dbo.vw_report_products_per_category ORDER BY category_name")
     report_rows = cur.fetchall()
+
+    # 1) заказы за период
+    cur.execute("EXEC dbo.sp_report_orders_period_grouped ?, ?", date_from, date_to)
+    orders_rows = cur.fetchall()
+
+    # 2) клиенты (история заказов за период)
+    cur.execute("EXEC sp_report_clients_orders")
+    customers_rows = cur.fetchall()
+
+    # 3) проданные товары за период
+    cur.execute("EXEC dbo.sp_report_sold_products_period ?, ?", date_from, date_to)
+    sold_rows = cur.fetchall()
 
     conn.close()
 
     return render_template(
         "admin.html",
         tab="reports",
-        report_rows=report_rows
+        report_rows=report_rows,
+        orders_rows=orders_rows,
+        customers_rows=customers_rows,
+        sold_rows=sold_rows,
+        date_from=date_from,
+        date_to=date_to
     )
+
 
 
 @auth_bp.route("/admin/reports/excel")
@@ -301,6 +334,268 @@ def export_word():
     buf.seek(0)
 
     return send_file(buf, as_attachment=True, download_name="report.docx")
+@auth_bp.route("/admin/reports/orders")
+def report_orders_period():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    date_from = request.args.get("from", "").strip()
+    date_to = request.args.get("to", "").strip()
+
+    rows = []
+    if date_from and date_to:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("EXEC dbo.sp_report_orders_period_grouped ?, ?", date_from, date_to)
+        rows = cur.fetchall()
+        conn.close()
+
+    return render_template(
+        "admin.html",
+        tab="reports",
+        report_tab="orders",
+        rows=rows,
+        date_from=date_from,
+        date_to=date_to
+    )
+@auth_bp.route("/admin/reports/clients")
+def report_clients():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_report_clients_orders")
+    rows = cur.fetchall()
+    conn.close()
+
+    return render_template(
+        "admin.html",
+        tab="reports",
+        report_tab="clients",
+        rows=rows
+    )
+@auth_bp.route("/admin/reports/products")
+def report_products_period():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    date_from = request.args.get("from", "").strip()
+    date_to = request.args.get("to", "").strip()
+
+    rows = []
+    if date_from and date_to:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("EXEC dbo.sp_report_sold_products_period ?, ?", date_from, date_to)
+        rows = cur.fetchall()
+        conn.close()
+
+    return render_template(
+        "admin.html",
+        tab="reports",
+        report_tab="products",
+        rows=rows,
+        date_from=date_from,
+        date_to=date_to
+    )
+@auth_bp.route("/admin/reports/orders/excel")
+def export_orders_excel():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    date_from = request.args.get("from", "").strip()
+    date_to = request.args.get("to", "").strip()
+    if not date_from or not date_to:
+        return redirect("/admin/reports?rtab=orders")
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_report_orders_period_grouped ?, ?", date_from, date_to)
+    rows = cur.fetchall()
+    conn.close()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Статус", "Клиент", "Категория", "Заказов", "Позиций", "Сумма"])
+
+    for r in rows:
+        ws.append([r.status, r.client_email, r.category_name, r.orders_count, r.items_count, r.total_sum])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="orders_report.xlsx")
+@auth_bp.route("/admin/reports/orders/word")
+def export_orders_word():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    date_from = request.args.get("from", "").strip()
+    date_to = request.args.get("to", "").strip()
+    if not date_from or not date_to:
+        return redirect("/admin/reports?rtab=orders")
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_report_orders_period_grouped ?, ?", date_from, date_to)
+    rows = cur.fetchall()
+    conn.close()
+
+    doc = Document()
+    doc.add_heading(f"Отчет по заказам за период {date_from} — {date_to}", level=1)
+
+    t = doc.add_table(rows=1, cols=6)
+    t.rows[0].cells[0].text = "Статус"
+    t.rows[0].cells[1].text = "Клиент"
+    t.rows[0].cells[2].text = "Категория"
+    t.rows[0].cells[3].text = "Заказов"
+    t.rows[0].cells[4].text = "Позиций"
+    t.rows[0].cells[5].text = "Сумма"
+
+    for r in rows:
+        c = t.add_row().cells
+        c[0].text = str(r.status)
+        c[1].text = str(r.client_email)
+        c[2].text = str(r.category_name)
+        c[3].text = str(r.orders_count)
+        c[4].text = str(r.items_count)
+        c[5].text = str(r.total_sum)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="orders_report.docx")
+@auth_bp.route("/admin/reports/clients/excel")
+def export_clients_excel():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_report_clients_orders")
+    rows = cur.fetchall()
+    conn.close()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["User ID", "Email", "Заказов", "Потрачено", "Первый заказ", "Последний заказ"])
+
+    for r in rows:
+        ws.append([r.user_id, r.email, r.orders_count, r.total_spent, r.first_order, r.last_order])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="clients_report.xlsx")
+@auth_bp.route("/admin/reports/clients/word")
+def export_clients_word():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_report_clients_orders")
+    rows = cur.fetchall()
+    conn.close()
+
+    doc = Document()
+    doc.add_heading("Отчет по клиентам (история заказов)", level=1)
+
+    t = doc.add_table(rows=1, cols=6)
+    t.rows[0].cells[0].text = "User ID"
+    t.rows[0].cells[1].text = "Email"
+    t.rows[0].cells[2].text = "Заказов"
+    t.rows[0].cells[3].text = "Потрачено"
+    t.rows[0].cells[4].text = "Первый заказ"
+    t.rows[0].cells[5].text = "Последний заказ"
+
+    for r in rows:
+        c = t.add_row().cells
+        c[0].text = str(r.user_id)
+        c[1].text = str(r.email)
+        c[2].text = str(r.orders_count)
+        c[3].text = str(r.total_spent)
+        c[4].text = str(r.first_order) if r.first_order else "-"
+        c[5].text = str(r.last_order) if r.last_order else "-"
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="clients_report.docx")
+@auth_bp.route("/admin/reports/products/excel")
+def export_products_excel():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    date_from = request.args.get("from", "").strip()
+    date_to = request.args.get("to", "").strip()
+    if not date_from or not date_to:
+        return redirect("/admin/reports?rtab=products")
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_report_sold_products_period ?, ?", date_from, date_to)
+    rows = cur.fetchall()
+    conn.close()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["ID", "Товар", "Продано (шт)", "Выручка"])
+
+    for r in rows:
+        ws.append([r.product_id, r.name, r.sold_qty, r.revenue])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="sold_products_report.xlsx")
+@auth_bp.route("/admin/reports/products/word")
+def export_products_word():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    date_from = request.args.get("from", "").strip()
+    date_to = request.args.get("to", "").strip()
+    if not date_from or not date_to:
+        return redirect("/admin/reports?rtab=products")
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_report_sold_products_period ?, ?", date_from, date_to)
+    rows = cur.fetchall()
+    conn.close()
+
+    doc = Document()
+    doc.add_heading(f"Отчет по проданным товарам за период {date_from} — {date_to}", level=1)
+
+    t = doc.add_table(rows=1, cols=4)
+    t.rows[0].cells[0].text = "ID"
+    t.rows[0].cells[1].text = "Товар"
+    t.rows[0].cells[2].text = "Продано (шт)"
+    t.rows[0].cells[3].text = "Выручка"
+
+    for r in rows:
+        c = t.add_row().cells
+        c[0].text = str(r.product_id)
+        c[1].text = str(r.name)
+        c[2].text = str(r.sold_qty)
+        c[3].text = str(r.revenue)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="sold_products_report.docx")
+
 # ---------------- CART (only for logged-in) ----------------
 
 def _cart():
