@@ -163,40 +163,170 @@
         </div>
 
         {% if tab == "reports" %}
-            <!-- REPORTS TAB -->
-            <div class="card">
-                <div class="section-title">
-                    <h2>Отчет: количество товаров по категориям</h2>
-                    <div class="row">
-                        <a class="btn" href="/admin/reports/word">Экспорт Word</a>
-                        <a class="btn primary" href="/admin/reports/excel">Экспорт Excel</a>
-                    </div>
-                </div>
-                <p class="muted">Источник данных: dbo.vw_report_products_per_category (через VIEW).</p>
+    <!-- REPORTS TAB -->
 
-                <table>
-                    <tr>
-                        <th style="width:120px;">ID</th>
-                        <th>Категория</th>
-                        <th style="width:180px;">Количество</th>
-                    </tr>
-                    {% if report_rows %}
-                        {% for r in report_rows %}
-                        <tr>
-                            <td>{{ r.category_id }}</td>
-                            <td>{{ r.category_name }}</td>
-                            <td>{{ r.products_count }}</td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="3" class="muted" style="padding:14px;">Нет данных отчёта.</td>
-                        </tr>
-                    {% endif %}
-                </table>
+    <div class="card">
+        <div class="section-title">
+            <h2>Фильтр периода</h2>
+        </div>
+
+        <form method="GET" action="/admin/reports" class="row" style="margin-top:10px;">
+            <label style="font-weight:900;color:#0b3b3b;">С:</label>
+            <input type="date" name="from" value="{{ date_from }}">
+            <label style="font-weight:900;color:#0b3b3b;">По:</label>
+            <input type="date" name="to" value="{{ date_to }}">
+            <button class="btn primary" type="submit">Показать</button>
+        </form>
+
+        <p class="muted" style="margin-top:10px;">
+            Эти даты используются для 3 отчётов ниже (заказы, клиенты, проданные товары).
+        </p>
+    </div>
+
+    <!-- 0) старый отчёт -->
+    <div class="card">
+        <div class="section-title">
+            <h2>Отчет: количество товаров по категориям</h2>
+            <div class="row">
+                <a class="btn" href="/admin/reports/word">Экспорт Word</a>
+                <a class="btn primary" href="/admin/reports/excel">Экспорт Excel</a>
             </div>
+        </div>
+        <p class="muted">Источник данных: dbo.vw_report_products_per_category (через VIEW).</p>
 
-        {% else %}
+        <table>
+            <tr>
+                <th style="width:120px;">ID</th>
+                <th>Категория</th>
+                <th style="width:180px;">Количество</th>
+            </tr>
+            {% if report_rows %}
+                {% for r in report_rows %}
+                <tr>
+                    <td>{{ r.category_id }}</td>
+                    <td>{{ r.category_name }}</td>
+                    <td>{{ r.products_count }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="3" class="muted" style="padding:14px;">Нет данных отчёта.</td>
+                </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <!-- 1) заказы за период (статус + клиент + категория) -->
+    <div class="card">
+        <div class="section-title">
+            <h2>Отчет: заказы за период (статус + клиент + категория)</h2>
+            <div class="row">
+                <a class="btn" href="/admin/reports/orders/word?from={{ date_from }}&to={{ date_to }}">Экспорт Word</a>
+                <a class="btn primary" href="/admin/reports/orders/excel?from={{ date_from }}&to={{ date_to }}">Экспорт Excel</a>
+            </div>
+        </div>
+        <p class="muted">Источник данных: dbo.sp_report_orders_period_grouped</p>
+
+        <table>
+            <tr>
+                <th style="width:160px;">Статус</th>
+                <th style="width:240px;">Клиент</th>
+                <th>Категория</th>
+                <th style="width:140px;">Заказов</th>
+                <th style="width:140px;">Штук</th>
+                <th style="width:160px;">Выручка</th>
+            </tr>
+            {% if orders_rows %}
+                {% for r in orders_rows %}
+                <tr>
+                    <td>{{ r.status }}</td>
+                    <td>{{ r.client_email }}</td>
+                    <td>{{ r.category_name }}</td>
+                    <td>{{ r.orders_count }}</td>
+                    <td>{{ r.items_count }}</td>
+                    <td>{{ r.total_sum }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="6" class="muted" style="padding:14px;">Нет данных за период.</td></tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <!-- 2) клиенты (история заказов) -->
+    <div class="card">
+        <div class="section-title">
+            <h2>Отчет: клиенты (история заказов)</h2>
+            <div class="row">
+                <a class="btn" href="/admin/reports/customers/word?from={{ date_from }}&to={{ date_to }}">Экспорт Word</a>
+                <a class="btn primary" href="/admin/reports/customers/excel?from={{ date_from }}&to={{ date_to }}">Экспорт Excel</a>
+            </div>
+        </div>
+        <p class="muted">Источник данных: dbo.sp_report_customers_orders_history</p>
+
+        <table>
+            <tr>
+                <th style="width:120px;">UserID</th>
+                <th style="width:260px;">Клиент</th>
+                <th style="width:140px;">Количество заказов</th>
+                <th style="width:180px;">Выручка от клиента</th>
+                <th style="width:160px;">Дата первого заказа</th>
+                <th style="width:160px;">Дата последнего заказа</th>
+            </tr>
+            {% if customers_rows %}
+                {% for r in customers_rows %}
+                <tr>
+                    <td>{{ r.user_id }}</td>
+                    <td>{{ r.email }}</td>
+                    <td>{{ r.orders_count }}</td>
+                    <td>{{ r.total_spent }}</td>
+                    <td>{{ r.first_order }}</td>
+                    <td>{{ r.last_order }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="6" class="muted" style="padding:14px;">Нет заказов за период.</td></tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <!-- 3) проданные товары за период -->
+    <div class="card">
+        <div class="section-title">
+            <h2>Отчет: проданные товары за период</h2>
+            <div class="row">
+                <a class="btn" href="/admin/reports/sold/word?from={{ date_from }}&to={{ date_to }}">Экспорт Word</a>
+                <a class="btn primary" href="/admin/reports/sold/excel?from={{ date_from }}&to={{ date_to }}">Экспорт Excel</a>
+            </div>
+        </div>
+        <p class="muted">Источник данных: dbo.sp_report_sold_products_period</p>
+
+        <table>
+            <tr>
+                <th style="width:120px;">ProductID</th>
+                <th>Товар</th>
+                <th style="width:240px;">Категория</th>
+                <th style="width:160px;">Продано(шт)</th>
+                <th style="width:160px;">Выручка</th>
+            </tr>
+            {% if sold_rows %}
+                {% for r in sold_rows %}
+                <tr>
+                    <td>{{ r.product_id }}</td>
+                    <td>{{ r.name }}</td>
+                    <td>{{ r.category_name }}</td>
+                    <td>{{ r.sold_qty }}</td>
+                    <td>{{ r.revenue }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="5" class="muted" style="padding:14px;">Нет продаж за период.</td></tr>
+            {% endif %}
+        </table>
+    </div>
+
+{% else %}
+
             <!-- CATALOG TAB -->
 
             <!-- BRANDS -->
