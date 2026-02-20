@@ -194,12 +194,152 @@ def cabinet():
     )
 
 
-@auth_bp.route("/admin")
+@auth_bp.route("/admin", methods=["GET", "POST"])
 def admin():
     gate = _require_admin()
     if gate:
         return gate
 
+    error = None
+    success = None
+
+    # ================= POST (CRUD) =================
+    if request.method == "POST":
+        action = request.form.get("action", "").strip()
+
+        try:
+            conn = get_conn()
+            cur = conn.cursor()
+
+            # ---------- BRANDS ----------
+            if action == "add_brand":
+                name = request.form.get("brand_name", "").strip()
+                cur.execute("EXEC dbo.sp_add_brand ?", name)
+                conn.commit()
+                success = "Бренд добавлен"
+
+            elif action == "edit_brand":
+                cur.execute(
+                    "EXEC dbo.sp_edit_brand ?, ?",
+                    int(request.form["brand_id"]),
+                    request.form["brand_name"]
+                )
+                conn.commit()
+                success = "Бренд обновлён"
+
+            elif action == "delete_brand":
+                cur.execute("EXEC dbo.sp_delete_brand ?", int(request.form["brand_id"]))
+                conn.commit()
+                success = "Бренд удалён"
+
+            # ---------- CATEGORIES ----------
+            elif action == "add_category":
+                name = request.form["category_name"]
+                parent = request.form.get("parent_id") or None
+                cur.execute("EXEC dbo.sp_add_category ?, ?", name, parent)
+                conn.commit()
+                success = "Категория добавлена"
+
+            elif action == "edit_category":
+                cid = int(request.form["category_id"])
+                name = request.form["category_name"]
+                parent = request.form.get("parent_id") or None
+                cur.execute("EXEC dbo.sp_edit_category ?, ?, ?", cid, name, parent)
+                conn.commit()
+                success = "Категория обновлена"
+
+            elif action == "delete_category":
+                cur.execute("EXEC dbo.sp_delete_category ?", int(request.form["category_id"]))
+                conn.commit()
+                success = "Категория удалена"
+
+            # ---------- PRODUCTS ----------
+            elif action == "add_product":
+                name = request.form.get("name", "").strip()
+                description = request.form.get("description") or None
+
+                price = float(request.form["price"])
+                old_price = request.form.get("old_price") or None
+                stock = int(request.form["stock"])
+
+                category_id = request.form.get("category_id") or None
+                brand_id = request.form.get("brand_id") or None
+
+                old_price = float(old_price) if old_price else None
+                category_id = int(category_id) if category_id else None
+                brand_id = int(brand_id) if brand_id else None
+
+                cur.execute("""
+                    EXEC dbo.sp_add_product
+                        @name = ?,
+                        @description = ?,
+                        @price = ?,
+                        @old_price = ?,
+                        @stock = ?,
+                        @category_id = ?,
+                        @brand_id = ?
+                """, name, description, price, old_price, stock, category_id, brand_id)
+
+                product_id = cur.fetchone()[0]
+
+                for f in request.files.getlist("images"):
+                    if f.filename:
+                        cur.execute(
+                            "INSERT INTO dbo.images(product_id, image_data) VALUES (?, ?)",
+                            product_id, f.read()
+                        )
+
+                conn.commit()
+                success = "Товар добавлен"
+
+            elif action == "edit_product":
+                pid = int(request.form["product_id"])
+
+                cur.execute("""
+                    EXEC dbo.sp_update_product ?, ?, ?, ?, ?, ?, ?, ?
+                """,
+                            pid,  # @product_id
+                            request.form["name"],  # @name
+                            request.form.get("description") or None,  # @description
+                            float(request.form["price"]),  # @price
+                            float(request.form["old_price"]) if request.form.get("old_price") else None,  # @old_price
+                            int(request.form["stock"]),  # @stock
+                            int(request.form["category_id"]) if request.form.get("category_id") else None,
+                            # @category_id
+                            int(request.form["brand_id"]) if request.form.get("brand_id") else None  # @brand_id
+                            )
+
+                if request.form.get("replace_images"):
+                    cur.execute("DELETE FROM dbo.images WHERE product_id=?", pid)
+
+                for f in request.files.getlist("images"):
+                    if f.filename:
+                        cur.execute(
+                            "INSERT INTO dbo.images(product_id,image_data) VALUES (?,?)",
+                            pid, f.read()
+                        )
+
+                conn.commit()
+                success = "Товар обновлён"
+            elif action == "delete_product":
+                pid = int(request.form["product_id"])
+                cur.execute("DELETE FROM dbo.images WHERE product_id=?", pid)
+                cur.execute("DELETE FROM dbo.products WHERE product_id=?", pid)
+                conn.commit()
+                success = "Товар удалён"
+
+            conn.close()
+
+            return redirect("/admin")
+
+        except Exception as e:
+            try:
+                conn.close()
+            except:
+                pass
+            error = str(e)
+
+    # ================= GET =================
     conn = get_conn()
     cur = conn.cursor()
 
@@ -219,7 +359,9 @@ def admin():
         brands=brands,
         categories=categories,
         products=products,
-        tab="products"
+        tab="products",
+        error=error,
+        success=success
     )
 
 
@@ -762,3 +904,87 @@ def cart_checkout():
     session.modified = True
 
     return redirect("/cabinet")
+from flask import jsonify
+
+@auth_bp.route("/compat")
+def compat_page():
+    gate = _require_login()
+    if gate:
+        return gate
+    return render_template("compat.html")
+
+@auth_bp.route("/api/search/products")
+def api_search_products():
+    gate = _require_login()
+    if gate:
+        return gate
+
+    q = request.args.get("q", "").strip()
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_search_products ?, ?", q, "product")
+    rows = cur.fetchall()
+    conn.close()
+
+    return jsonify([{"id": int(r.product_id), "name": r.name} for r in rows])
+
+@auth_bp.route("/api/search/parts")
+def api_search_parts():
+    gate = _require_login()
+    if gate:
+        return gate
+
+    q = request.args.get("q", "").strip()
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_search_products ?, ?", q, "part")
+    rows = cur.fetchall()
+    conn.close()
+
+    return jsonify([{"id": int(r.product_id), "name": r.name} for r in rows])
+
+@auth_bp.route("/api/compat/matrix", methods=["POST"])
+def api_compat_matrix():
+    gate = _require_login()
+    if gate:
+        return gate
+
+    product_id = request.json.get("product_id")
+    part_id = request.json.get("part_id")
+    if not product_id or not part_id:
+        return jsonify({"ok": False, "error": "product_id and part_id required"}), 400
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("EXEC dbo.sp_part_compat_matrix ?", int(part_id))
+    rows = cur.fetchall()
+    conn.close()
+
+    # разделяем на compatible / incompatible
+    compatible = []
+    incompatible = []
+    part_name = None
+
+    for r in rows:
+        part_name = r.part_name
+        item = {
+            "id": int(r.product_id),
+            "name": r.product_name,
+            "brand": r.brand_name,
+            "img": f"/product_image/{int(r.product_id)}",
+        }
+        if int(r.is_compatible) == 1:
+            compatible.append(item)
+        else:
+            incompatible.append(item)
+
+    # отдельно: подходит ли выбранная запчасть к выбранному товару
+    selected_ok = any(x["id"] == int(product_id) for x in compatible)
+
+    return jsonify({
+        "ok": True,
+        "selected_ok": selected_ok,
+        "part_name": part_name,
+        "compatible": compatible,
+        "incompatible": incompatible
+    })
