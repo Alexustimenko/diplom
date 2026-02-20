@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Совместимость запчастей</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 18px; }
+    .box { max-width: 980px; margin: 0 auto; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+    .field { flex:1; min-width: 280px; }
+    label { font-weight: 800; display:block; margin-bottom:6px; }
+    input { width:100%; padding:10px; border:2px solid #33CCCC; border-radius:10px; }
+    button { padding:10px 14px; border-radius:10px; border:0; background:#FF7400; color:white; font-weight:900; cursor:pointer; }
+    .hint { color:#2b6666; font-weight:700; margin-top:10px; }
+
+    .matrix { display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:16px; }
+    .col { border-radius:14px; padding:14px; }
+    .col.good { background: #e8fff0; border:2px solid #22a055; }
+    .col.bad  { background: #ffecec; border:2px solid #d23b3b; }
+    .col h3 { margin:0 0 10px 0; }
+
+    .cards { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
+    .card { background:white; border-radius:12px; padding:10px; display:flex; gap:10px; align-items:center; box-shadow:0 6px 14px rgba(0,0,0,0.08); }
+    .card img { width:54px; height:54px; object-fit:cover; border-radius:10px; border:1px solid #eee; }
+    .name { font-weight:900; }
+    .brand { color:#666; font-weight:700; font-size:12px; }
+
+    .dropdown { position: relative; }
+    .list {
+      position:absolute; left:0; right:0; top: 46px;
+      background:white; border:1px solid #ddd; border-radius:12px;
+      overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.12);
+      display:none; z-index: 50;
+      max-height: 260px; overflow-y:auto;
+    }
+    .item { padding:10px; cursor:pointer; font-weight:800; }
+    .item:hover { background:#f5fbfb; }
+    .okline { margin-top:14px; font-weight:900; }
+    .ok { color:#148a00; }
+    .no { color:#d10000; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h2>Узнай, подходит ли запчасть</h2>
+
+  <div class="row">
+    <div class="field dropdown">
+      <label>Товар (кресло/диван):</label>
+      <input id="productInput" placeholder="Начни вводить название..." autocomplete="off">
+      <div id="productList" class="list"></div>
+    </div>
+
+    <div class="field dropdown">
+      <label>Запчасть:</label>
+      <input id="partInput" placeholder="Начни вводить запчасть..." autocomplete="off">
+      <div id="partList" class="list"></div>
+    </div>
+
+    <div style="padding-top:28px;">
+      <button id="checkBtn">Проверить</button>
+    </div>
+  </div>
+
+  <div id="status" class="hint"></div>
+  <div id="resultLine" class="okline"></div>
+
+  <div id="matrix" class="matrix" style="display:none;">
+    <div class="col good">
+      <h3>Совместима с</h3>
+      <div id="goodCards" class="cards"></div>
+    </div>
+    <div class="col bad">
+      <h3>Несовместима с</h3>
+      <div id="badCards" class="cards"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let selectedProductId = null;
+  let selectedPartId = null;
+
+  function debounce(fn, ms=200){
+    let t;
+    return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); };
+  }
+
+  function renderDropdown(listEl, items, onPick){
+    listEl.innerHTML = "";
+    if(!items.length){ listEl.style.display="none"; return; }
+    for(const it of items){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.textContent = it.name;
+      div.onclick = ()=>onPick(it);
+      listEl.appendChild(div);
+    }
+    listEl.style.display = "block";
+  }
+
+  async function fetchJson(url){
+    const r = await fetch(url, {headers: {"Accept":"application/json"}});
+    return await r.json();
+  }
+
+  const productInput = document.getElementById("productInput");
+  const partInput = document.getElementById("partInput");
+  const productList = document.getElementById("productList");
+  const partList = document.getElementById("partList");
+  const status = document.getElementById("status");
+  const matrix = document.getElementById("matrix");
+  const goodCards = document.getElementById("goodCards");
+  const badCards = document.getElementById("badCards");
+  const resultLine = document.getElementById("resultLine");
+
+  const onProductType = debounce(async ()=>{
+    const q = productInput.value.trim();
+    selectedProductId = null;
+    if(q.length < 1){ productList.style.display="none"; return; }
+    const items = await fetchJson(`/api/search/products?q=${encodeURIComponent(q)}`);
+    renderDropdown(productList, items, (it)=>{
+      selectedProductId = it.id;
+      productInput.value = it.name;
+      productList.style.display="none";
+    });
+  }, 200);
+
+  const onPartType = debounce(async ()=>{
+    const q = partInput.value.trim();
+    selectedPartId = null;
+    if(q.length < 1){ partList.style.display="none"; return; }
+    const items = await fetchJson(`/api/search/parts?q=${encodeURIComponent(q)}`);
+    renderDropdown(partList, items, (it)=>{
+      selectedPartId = it.id;
+      partInput.value = it.name;
+      partList.style.display="none";
+    });
+  }, 200);
+
+  productInput.addEventListener("input", onProductType);
+  partInput.addEventListener("input", onPartType);
+
+  document.addEventListener("click", (e)=>{
+    if(!productList.contains(e.target) && e.target !== productInput) productList.style.display="none";
+    if(!partList.contains(e.target) && e.target !== partInput) partList.style.display="none";
+  });
+
+  function cardHtml(x){
+    return `
+      <div class="card">
+        <img src="${x.img}" alt="">
+        <div>
+          <div class="name">${x.name}</div>
+          <div class="brand">${x.brand ?? ""}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  document.getElementById("checkBtn").onclick = async ()=>{
+    status.textContent = "";
+    resultLine.textContent = "";
+    matrix.style.display = "none";
+    goodCards.innerHTML = "";
+    badCards.innerHTML = "";
+
+    if(!selectedProductId){
+      status.textContent = "Выбери товар из подсказки (клик по варианту).";
+      return;
+    }
+    if(!selectedPartId){
+      status.textContent = "Выбери запчасть из подсказки (клик по варианту).";
+      return;
+    }
+
+    status.textContent = "Проверяем...";
+    const r = await fetch("/api/compat/matrix", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({product_id: selectedProductId, part_id: selectedPartId})
+    });
+    const data = await r.json();
+    if(!data.ok){
+      status.textContent = data.error || "Ошибка";
+      return;
+    }
+
+    status.textContent = "";
+    resultLine.innerHTML = data.selected_ok
+      ? `<span class="ok">✅ Данная запчасть совместима с выбранным товаром.</span>`
+      : `<span class="no">❌ Данная запчасть НЕ совместима с выбранным товаром.</span>`;
+
+    goodCards.innerHTML = data.compatible.map(cardHtml).join("");
+    badCards.innerHTML  = data.incompatible.map(cardHtml).join("");
+    matrix.style.display = "grid";
+  };
+</script>
+</body>
+</html>
