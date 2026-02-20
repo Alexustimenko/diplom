@@ -252,6 +252,23 @@
             {% endfor %}
         </div>
     {% endif %}
+    <div style="display:flex; gap:10px; justify-content:center; align-items:center; margin:18px 0;">
+  {% if page > 1 %}
+    <a href="/?q={{ q }}&page={{ page - 1 }}" class="btn">← Назад</a>
+  {% else %}
+    <span class="btn" style="opacity:.4; pointer-events:none;">← Назад</span>
+  {% endif %}
+
+  <span style="font-weight:900; color:#0b3b3b;">
+    Страница {{ page }} / {{ total_pages }}
+  </span>
+
+  {% if page < total_pages %}
+    <a href="/?q={{ q }}&page={{ page + 1 }}" class="btn">Вперёд →</a>
+  {% else %}
+    <span class="btn" style="opacity:.4; pointer-events:none;">Вперёд →</span>
+  {% endif %}
+</div>
 
 </div>
 
@@ -290,6 +307,50 @@
     }
 })();
 </script>
+<script>
+(function(){
+  const input = document.getElementById("searchInput");
+  let t = null;
 
+  function goServerSearch(){
+    const q = (input.value || "").trim();
+    const url = new URL(window.location.href);
+    if(q) url.searchParams.set("q", q);
+    else url.searchParams.delete("q");
+    url.searchParams.set("page", "1");     // при новом поиске всегда на 1 страницу
+    window.location.href = url.toString();
+  }
+
+  if(input){
+    input.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(goServerSearch, 350); // анти-спам, 350мс
+    });
+
+    // Enter тоже отправит
+    input.addEventListener("keydown", (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        goServerSearch();
+      }
+    });
+  }
+})();
+</script>
+<script>
+(function () {
+  const input = document.getElementById("searchInput");
+  if (!input) return;
+
+  // если в URL есть q=..., значит это результат поиска — возвращаем фокус
+  const url = new URL(window.location.href);
+  if (!url.searchParams.get("q")) return;
+
+  // фокус + курсор в конец
+  input.focus({ preventScroll: true });
+  const v = input.value || "";
+  input.setSelectionRange(v.length, v.length);
+})();
+</script>
 </body>
 </html>

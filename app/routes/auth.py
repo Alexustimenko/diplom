@@ -25,32 +25,61 @@ def _require_login():
 def index():
     q = request.args.get("q", "").strip()
 
+    # пагинация
+    per_page = 2
+    try:
+        page = int(request.args.get("page", "1"))
+    except:
+        page = 1
+    if page < 1:
+        page = 1
+
     conn = get_conn()
     cur = conn.cursor()
 
+    params = []
+    where_sql = ""
+
     if q:
         like = f"%{q}%"
-        # строго через VIEW
-        cur.execute(
-            """
-            SELECT * FROM dbo.vw_products
+        where_sql = """
             WHERE
                 (name LIKE ?)
                 OR (description LIKE ?)
                 OR (brand_name LIKE ?)
                 OR (category_name LIKE ?)
-            ORDER BY product_id DESC
-            """,
-            like, like, like, like
-        )
-    else:
-        cur.execute("SELECT * FROM dbo.vw_products ORDER BY product_id DESC")
+        """
+        params = [like, like, like, like]
+
+    # 1) считаем всего строк по фильтру
+    cur.execute(f"SELECT COUNT(*) FROM dbo.vw_products {where_sql}", *params)
+    total = int(cur.fetchone()[0])
+
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    if page > total_pages:
+        page = total_pages
+
+    offset = (page - 1) * per_page
+
+    # 2) забираем только нужную страницу (но поиск применяется ко всем)
+    cur.execute(f"""
+        SELECT *
+        FROM dbo.vw_products
+        {where_sql}
+        ORDER BY product_id DESC
+        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+    """, *(params + [offset, per_page]))
 
     products = cur.fetchall()
     conn.close()
 
-    return render_template("index.html", products=products, q=q)
-
+    return render_template(
+        "index.html",
+        products=products,
+        q=q,
+        page=page,
+        total_pages=total_pages
+    )
 
 # ✅ Страница товара (галерея по всем image_id)
 @auth_bp.route("/product/<int:pid>")
