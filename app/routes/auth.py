@@ -273,7 +273,7 @@ def admin():
                 cid = int(request.form["category_id"])
                 name = request.form["category_name"]
                 parent = request.form.get("parent_id") or None
-                cur.execute("EXEC dbo.sp_edit_category ?, ?, ?", cid, name, parent)
+                cur.execute("EXEC dbo.sp_update_category ?, ?, ?", cid, name, parent)
                 conn.commit()
                 success = "Категория обновлена"
 
@@ -402,6 +402,10 @@ def admin_reports():
 
     date_from = request.args.get("from", "").strip()
     date_to   = request.args.get("to", "").strip()
+    target_category_id = request.args.get("target_category_id", "").strip()
+    brand_id = request.args.get("parts_brand_id", "").strip()
+
+    parts_rows = []
 
     # если даты не задали — подставим сегодня
     if not date_from or not date_to:
@@ -432,7 +436,21 @@ def admin_reports():
     # 3) проданные товары за период
     cur.execute("EXEC dbo.sp_report_sold_products_period ?, ?", date_from, date_to)
     sold_rows = cur.fetchall()
+    # список брендов и категорий уже есть в админке, но в reports надо тоже
+    cur.execute("SELECT category_id, name FROM dbo.categories WHERE name not like 'Зап%'ORDER BY name")
+    all_categories = cur.fetchall()
 
+    cur.execute("SELECT id_brand, name FROM dbo.brand ORDER BY name")
+    all_brands = cur.fetchall()
+
+    # отчёт по комплектации (запчасти бренда)
+    # отчёт по комплектации (запчасти по бренду; бренд может быть пустой)
+    parts_rows = []
+    if target_category_id.isdigit():
+        bval = int(brand_id) if brand_id.isdigit() else None
+        cur.execute("EXEC dbo.sp_report_parts_by_brand_and_category ?, ?",
+                    int(target_category_id), bval)
+        parts_rows = cur.fetchall()
     conn.close()
 
     return render_template(
@@ -443,7 +461,12 @@ def admin_reports():
         customers_rows=customers_rows,
         sold_rows=sold_rows,
         date_from=date_from,
-        date_to=date_to
+        date_to=date_to,
+        all_categories=all_categories,
+        all_brands=all_brands,
+        target_category_id=target_category_id,
+        parts_brand_id=brand_id,
+        parts_rows=parts_rows,
     )
 
 
@@ -766,7 +789,89 @@ def export_products_word():
     doc.save(buf)
     buf.seek(0)
     return send_file(buf, as_attachment=True, download_name="sold_products_report.docx")
+@auth_bp.route("/admin/reports/parts/excel")
+def export_parts_excel():
+    gate = _require_admin()
+    if gate:
+        return gate
 
+    target_category_id = request.args.get("target_category_id", "").strip()
+    brand_id = request.args.get("parts_brand_id", "").strip()
+
+    # ✅ category обязателен, brand может быть пустым = все бренды
+    if not target_category_id.isdigit():
+        return redirect("/admin/reports")
+
+    bval = int(brand_id) if brand_id.isdigit() else None
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "EXEC dbo.sp_report_parts_by_brand_and_category ?, ?",
+        int(target_category_id), bval
+    )
+    rows = cur.fetchall()
+    conn.close()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["PartID", "Запчасть", "Бренд", "Категория запчасти", "Цена", "Остаток"])
+
+    for r in rows:
+        ws.append([r.part_id, r.part_name, r.brand_name, r.part_category, r.price, r.stock_quantity])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="parts_report.xlsx")
+@auth_bp.route("/admin/reports/parts/word")
+def export_parts_word():
+    gate = _require_admin()
+    if gate:
+        return gate
+
+    target_category_id = request.args.get("target_category_id", "").strip()
+    brand_id = request.args.get("parts_brand_id", "").strip()
+
+    # ✅ category обязателен, brand может быть пустым = все бренды
+    if not target_category_id.isdigit():
+        return redirect("/admin/reports")
+
+    bval = int(brand_id) if brand_id.isdigit() else None
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "EXEC dbo.sp_report_parts_by_brand_and_category ?, ?",
+        int(target_category_id), bval
+    )
+    rows = cur.fetchall()
+    conn.close()
+
+    doc = Document()
+    doc.add_heading("Отчет по комплектации товаров (запчасти по бренду)", level=1)
+
+    t = doc.add_table(rows=1, cols=6)
+    t.rows[0].cells[0].text = "PartID"
+    t.rows[0].cells[1].text = "Запчасть"
+    t.rows[0].cells[2].text = "Бренд"
+    t.rows[0].cells[3].text = "Категория запчасти"
+    t.rows[0].cells[4].text = "Цена"
+    t.rows[0].cells[5].text = "Остаток"
+
+    for r in rows:
+        c = t.add_row().cells
+        c[0].text = str(r.part_id)
+        c[1].text = str(r.part_name)
+        c[2].text = str(r.brand_name)
+        c[3].text = str(r.part_category)
+        c[4].text = str(r.price)
+        c[5].text = str(r.stock_quantity)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="parts_report.docx")
 # ---------------- CART (only for logged-in) ----------------
 
 def _cart():

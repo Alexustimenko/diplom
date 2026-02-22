@@ -325,6 +325,72 @@
         </table>
     </div>
 
+<div class="card">
+  <div class="section-title">
+    <h2>Отчет: комплектация товаров (запчасти по бренду)</h2>
+   {% if target_category_id %}
+  <div class="row">
+    <a class="btn"
+       href="/admin/reports/parts/word?target_category_id={{ target_category_id }}&parts_brand_id={{ parts_brand_id or '' }}">
+       Экспорт Word
+    </a>
+    <a class="btn primary"
+       href="/admin/reports/parts/excel?target_category_id={{ target_category_id }}&parts_brand_id={{ parts_brand_id or '' }}">
+       Экспорт Excel
+    </a>
+  </div>
+{% endif %}
+  </div>
+
+  <form method="GET" action="/admin/reports" class="row" style="margin-top:10px;">
+    <label style="font-weight:900;color:#0b3b3b;">Категория товара:</label>
+    <select name="target_category_id">
+      <option value="">(выбери)</option>
+      {% for c in all_categories %}
+        <option value="{{ c.category_id }}" {% if target_category_id|int == c.category_id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label style="font-weight:900;color:#0b3b3b;">Бренд:</label>
+    <select name="parts_brand_id">
+  <option value="">(все бренды)</option>
+  {% for b in all_brands %}
+    <option value="{{ b.id_brand }}" {% if parts_brand_id|int == b.id_brand %}selected{% endif %}>{{ b.name }}</option>
+  {% endfor %}
+</select>
+
+    <button class="btn primary" type="submit">Показать</button>
+  </form>
+
+  <p class="muted" style="margin-top:10px;">
+    Логика: берём товары из ветки категорий “запчасти” + фильтр по бренду.
+  </p>
+
+  <table>
+    <tr>
+      <th style="width:120px;">PartID</th>
+      <th>Запчасть</th>
+      <th style="width:180px;">Бренд</th>
+      <th style="width:240px;">Категория запчасти</th>
+      <th style="width:140px;">Цена</th>
+      <th style="width:140px;">Остаток</th>
+    </tr>
+    {% if parts_rows %}
+      {% for r in parts_rows %}
+      <tr>
+        <td>{{ r.part_id }}</td>
+        <td>{{ r.part_name }}</td>
+        <td>{{ r.brand_name }}</td>
+        <td>{{ r.part_category }}</td>
+        <td>{{ r.price }}</td>
+        <td>{{ r.stock_quantity }}</td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="6" class="muted" style="padding:14px;">Нет данных (выбери категорию и бренд).</td></tr>
+    {% endif %}
+  </table>
+</div>
 {% else %}
 
             <!-- CATALOG TAB -->
