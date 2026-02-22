@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Умный подбор</title>
+    <style>
+        :root{ --orange:#FF7400; --cyan:#33CCCC; --green:#1aa34a; --red:#d10000; }
+        body{ margin:0; background:var(--cyan); font-family:Arial, sans-serif; }
+
+        .topbar{
+            background:white; padding:14px 20px;
+            display:flex; justify-content:space-between; align-items:center;
+            box-shadow:0 6px 16px rgba(0,0,0,0.15);
+        }
+        .logo{ font-weight:900; color:var(--orange); letter-spacing:.06em; font-size:22px; }
+        .btn{
+            display:inline-block; padding:10px 14px; border-radius:10px;
+            border:2px solid var(--cyan); background:white; color:#0b3b3b;
+            font-weight:900; text-decoration:none; cursor:pointer;
+        }
+        .btn.primary{ background:var(--orange); border-color:var(--orange); color:white; }
+
+        .wrap{ max-width:1300px; margin:26px auto; padding:0 16px; }
+        .card{ background:white; border-radius:18px; padding:18px; box-shadow:0 10px 26px rgba(0,0,0,.18); margin-bottom:16px; }
+
+        .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+        select, input{
+            padding:12px 14px; border-radius:12px; border:2px solid var(--cyan);
+            font-weight:900; outline:none;
+        }
+        label{ font-weight:900; color:#0b3b3b; }
+        .muted{ color:#2f5f5f; font-weight:800; margin:0; }
+
+        .cols{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        @media(max-width:980px){ .cols{ grid-template-columns:1fr; } }
+
+        .col-title{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .badge{
+            padding:6px 10px; border-radius:999px; color:white; font-weight:900; font-size:12px;
+        }
+        .badge.ok{ background:var(--green); }
+        .badge.bad{ background:var(--red); }
+
+        .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:14px; margin-top:12px; }
+        .pcard{
+            border-radius:16px; padding:14px;
+            border:2px solid #e8e8e8;
+            box-shadow:0 8px 20px rgba(0,0,0,.10);
+            cursor:pointer;
+        }
+        .pcard.ok{ border-color: rgba(26,163,74,.5); }
+        .pcard.bad{ border-color: rgba(209,0,0,.45); }
+
+        .thumb{
+            width:100%; height:180px; object-fit:contain;
+            border-radius:12px; background:#fafafa; border:2px solid #eee;
+            padding:8px; box-sizing:border-box;
+        }
+        .name{ margin:10px 0 6px; font-weight:900; color:#0b3b3b; font-size:18px; }
+        .meta{ color:#4d6666; font-weight:800; font-size:12px; }
+        .price{ margin-top:10px; font-weight:900; color:var(--orange); font-size:18px; }
+
+        .reasons{ margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+        .chip{
+            padding:6px 10px; border-radius:999px;
+            font-weight:900; font-size:12px;
+            border:2px solid #e8e8e8;
+        }
+        .chip.ok{ border-color: rgba(26,163,74,.45); background:rgba(26,163,74,.08); color:#0b3b3b; }
+        .chip.bad{ border-color: rgba(209,0,0,.45); background:rgba(209,0,0,.08); color:#0b3b3b; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="logo">УМНЫЙ ПОДБОР</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn" href="/">Каталог</a>
+        {% if session.get("is_admin") == 1 %}
+            <a class="btn primary" href="/admin">Админка</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="wrap">
+    <div class="card">
+        <h2 style="margin:0; color:var(--orange);">Параметры подбора</h2>
+        <p class="muted" style="margin-top:6px;">Заполни параметры и получишь “подойдет/не подойдет” с подсветкой причин.</p>
+
+        <form method="POST" class="row" style="margin-top:12px;">
+            <div>
+                <label>Категория</label><br>
+                <select name="category_id">
+                    <option value="">(не выбрано)</option>
+                    {% for c in categories %}
+                        <option value="{{ c.category_id }}" {% if category_id|int == c.category_id %}selected{% endif %}>
+                            {{ c.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+  <label>Бренд</label><br>
+  <select name="brand_id" {% if parts_mode %}disabled{% endif %}>
+    <option value="">(не выбрано)</option>
+    {% for b in brands %}
+      <option value="{{ b.id_brand }}" {% if brand_id|int == b.id_brand %}selected{% endif %}>
+        {{ b.name }}
+      </option>
+    {% endfor %}
+  </select>
+
+  {% if parts_mode %}
+    <div class="muted" style="margin-top:6px;">Для запчастей бренд не учитывается.</div>
+  {% endif %}
+</div>
+
+            <div>
+                <label>Цена от</label><br>
+                <input name="price_from" value="{{ price_from or '' }}" placeholder="например 100">
+            </div>
+
+            <div>
+                <label>Цена до</label><br>
+                <input name="price_to" value="{{ price_to or '' }}" placeholder="например 500">
+            </div>
+
+            <label style="display:flex; gap:10px; align-items:center; margin-bottom:2px;">
+                <input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}>
+                Только в наличии
+            </label>
+
+            <button class="btn primary" type="submit">Подобрать</button>
+        </form>
+    </div>
+
+    {% if suitable or unsuitable %}
+    <div class="cols">
+        <div class="card">
+            <div class="col-title">
+                <h2>Вам подойдёт</h2>
+                <span class="badge ok">{{ suitable|length }}</span>
+            </div>
+
+            <div class="grid">
+                {% for it in suitable %}
+                    {% set p = it.p %}
+                    <div class="pcard ok" onclick="location.href='/product/{{ p.product_id }}'">
+                        <img class="thumb" src="/product_image/{{ p.product_id }}" alt="">
+                        <div class="name">{{ p.name }}</div>
+                        <div class="meta">{{ p.category_name or '-' }} / {{ p.brand_name or '-' }}</div>
+                        <div class="price">{{ p.price }}</div>
+
+                        <div class="reasons">
+                            {% for k,v in it.ok %}
+                                <span class="chip ok">{{ k }}: {{ v }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="col-title">
+                <h2>Вам не подойдёт</h2>
+                <span class="badge bad">{{ unsuitable|length }}</span>
+            </div>
+
+            <div class="grid">
+                {% for it in unsuitable %}
+                    {% set p = it.p %}
+                    <div class="pcard bad" onclick="location.href='/product/{{ p.product_id }}'">
+                        <img class="thumb" src="/product_image/{{ p.product_id }}" alt="">
+                        <div class="name">{{ p.name }}</div>
+                        <div class="meta">{{ p.category_name or '-' }} / {{ p.brand_name or '-' }}</div>
+                        <div class="price">{{ p.price }}</div>
+
+                        <div class="reasons">
+                            {% for k,v in it.bad %}
+                                <span class="chip bad">{{ k }}: {{ v }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+</body>
+</html>

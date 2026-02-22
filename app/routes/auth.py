@@ -1017,3 +1017,188 @@ def api_compat_matrix():
         "compatible": compatible,
         "incompatible": incompatible
     })
+@auth_bp.route("/smart", methods=["GET", "POST"])
+def smart_pick():
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # списки для формы
+    cur.execute("SELECT category_id, name FROM dbo.categories ORDER BY name")
+    categories = cur.fetchall()
+
+    cur.execute("SELECT id_brand, name FROM dbo.brand ORDER BY name")
+    brands = cur.fetchall()
+
+    # значения формы
+    category_id = request.values.get("category_id", "").strip()
+    brand_id = request.values.get("brand_id", "").strip()
+    price_from = request.values.get("price_from", "").strip()
+    price_to = request.values.get("price_to", "").strip()
+    in_stock = (request.values.get("in_stock") == "1")
+
+    suitable = []
+    unsuitable = []
+
+    # --- определяем режим "запчасти" по выбранной категории ---
+    parts_mode = False          # бренд отключаем
+    parts_root_mode = False     # выбрана корневая "Запчасти"
+    parts_root_id = None
+    parts_category_ids = set()  # все категории внутри ветки запчастей (для root)
+
+    cat = int(category_id) if category_id.isdigit() else None
+    br = int(brand_id) if brand_id.isdigit() else None
+
+    if cat is not None:
+        cur.execute("""
+            SELECT
+                c.category_id,
+                c.name,
+                c.parent_id,
+                ISNULL(p.name,'') AS parent_name
+            FROM dbo.categories c
+            LEFT JOIN dbo.categories p ON p.category_id = c.parent_id
+            WHERE c.category_id = ?
+        """, cat)
+        cinfo = cur.fetchone()
+
+        if cinfo:
+            cname = (cinfo.name or "").lower()
+            pname = (cinfo.parent_name or "").lower()
+            parent_id = cinfo.parent_id
+
+            is_parts_any = ("запчаст" in cname) or ("запчаст" in pname)
+            if is_parts_any:
+                parts_mode = True
+
+                # корневая "Запчасти": имя содержит "запчаст", а родитель не "запчасти"
+                if ("запчаст" in cname) and (parent_id is None or ("запчаст" not in pname)):
+                    parts_root_mode = True
+                    parts_root_id = int(cinfo.category_id)
+
+                    # соберём все category_id внутри ветки "Запчасти"
+                    cur.execute("""
+                        WITH cat_tree AS (
+                            SELECT category_id, parent_id
+                            FROM dbo.categories
+                            WHERE category_id = ?
+                            UNION ALL
+                            SELECT c.category_id, c.parent_id
+                            FROM dbo.categories c
+                            JOIN cat_tree t ON c.parent_id = t.category_id
+                        )
+                        SELECT category_id FROM cat_tree
+                    """, parts_root_id)
+                    parts_category_ids = {int(r[0]) for r in cur.fetchall()}
+
+    # если запчасти — бренд игнорируем
+    if parts_mode:
+        br = None
+
+    # если форма отправлена
+    if request.method == "POST":
+        pf = None
+        pt = None
+        try:
+            pf = float(price_from.replace(",", ".")) if price_from else None
+        except:
+            pf = None
+        try:
+            pt = float(price_to.replace(",", ".")) if price_to else None
+        except:
+            pt = None
+
+        # кандидаты
+        cur.execute("""
+            SELECT *
+            FROM dbo.vw_products
+            WHERE is_active = 1
+            ORDER BY product_id DESC
+        """)
+        rows = cur.fetchall()
+
+        # человеко-читаемые названия выбранных
+        cat_name = None
+        brand_name = None
+        if cat:
+            cur.execute("SELECT name FROM dbo.categories WHERE category_id = ?", cat)
+            rr = cur.fetchone()
+            cat_name = rr[0] if rr else None
+        if br:
+            cur.execute("SELECT name FROM dbo.brand WHERE id_brand = ?", br)
+            rr = cur.fetchone()
+            brand_name = rr[0] if rr else None
+
+        for p in rows:
+            reasons_ok = []
+            reasons_bad = []
+
+            # ---- КАТЕГОРИЯ (особая логика для запчастей) ----
+            if cat is not None:
+                if parts_mode:
+                    # 1) выбрали корневую "Запчасти" -> подходят ВСЕ товары из ветки запчастей
+                    if parts_root_mode:
+                        if int(p.category_id or 0) in parts_category_ids:
+                            reasons_ok.append(("Категория", "ветка запчастей"))
+                        else:
+                            reasons_bad.append(("Категория", "это не запчасть"))
+                    else:
+                        # 2) выбрали подкатегорию запчастей -> только эта подкатегория
+                        if p.category_id == cat:
+                            reasons_ok.append(("Категория", f"{cat_name or cat}"))
+                        else:
+                            reasons_bad.append(("Категория", f"нужна {cat_name or cat}, а тут {p.category_name or '-'}"))
+                else:
+                    # обычная категория (кресла/диваны и т.п.) — строго совпадение category_id
+                    if p.category_id == cat:
+                        reasons_ok.append(("Категория", f"{cat_name or cat}"))
+                    else:
+                        reasons_bad.append(("Категория", f"нужна {cat_name or cat}, а тут {p.category_name or '-'}"))
+
+            # ---- БРЕНД (если НЕ запчасти) ----
+            if br is not None:
+                if getattr(p, "id_brand", None) == br:
+                    reasons_ok.append(("Бренд", f"{brand_name or br}"))
+                else:
+                    reasons_bad.append(("Бренд", f"нужен {brand_name or br}, а тут {p.brand_name or '-'}"))
+
+            # ---- ЦЕНА ----
+            if pf is not None:
+                if float(p.price) >= pf:
+                    reasons_ok.append(("Цена от", f"≥ {pf}"))
+                else:
+                    reasons_bad.append(("Цена от", f"цена {p.price} < {pf}"))
+            if pt is not None:
+                if float(p.price) <= pt:
+                    reasons_ok.append(("Цена до", f"≤ {pt}"))
+                else:
+                    reasons_bad.append(("Цена до", f"цена {p.price} > {pt}"))
+
+            # ---- НАЛИЧИЕ ----
+            if in_stock:
+                if int(p.stock_quantity) > 0:
+                    reasons_ok.append(("Наличие", "есть"))
+                else:
+                    reasons_bad.append(("Наличие", "нет в наличии"))
+
+            item = {"p": p, "ok": reasons_ok, "bad": reasons_bad}
+
+            if len(reasons_bad) == 0:
+                suitable.append(item)
+            else:
+                unsuitable.append(item)
+
+    conn.close()
+
+    return render_template(
+        "smart.html",
+        categories=categories,
+        brands=brands,
+        category_id=category_id,
+        brand_id=brand_id,
+        price_from=price_from,
+        price_to=price_to,
+        in_stock=in_stock,
+        suitable=suitable,
+        unsuitable=unsuitable,
+        parts_mode=parts_mode
+    )
