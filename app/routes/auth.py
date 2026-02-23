@@ -21,9 +21,19 @@ def _require_login():
 
 
 
+# app/routes/auth.py  (ФРАГМЕНТ: только index() с фильтрами + пагинацией)
+
 @auth_bp.route("/")
 def index():
     q = request.args.get("q", "").strip()
+
+    # фильтры
+    category_id_raw = request.args.get("category_id", "").strip()
+    brand_id_raw = request.args.get("brand_id", "").strip()
+    color_raw = request.args.get("color", "").strip()
+    material_raw = request.args.get("material", "").strip()
+    price_from_raw = request.args.get("price_from", "").strip()
+    price_to_raw = request.args.get("price_to", "").strip()
 
     # пагинация
     per_page = 2
@@ -37,21 +47,108 @@ def index():
     conn = get_conn()
     cur = conn.cursor()
 
-    params = []
-    where_sql = ""
+    # 1) категории для выпадашки
+    cur.execute("SELECT category_id, name, parent_id FROM dbo.categories ORDER BY name")
+    categories = cur.fetchall()
 
+    # 2) бренды для выпадашки (таблица называется brand)
+    cur.execute("SELECT id_brand, name FROM dbo.brand ORDER BY name")
+    brands = cur.fetchall()
+
+    # 3) определить ветку "запчасти" по названию категорий (без доп. таблиц)
+    parts_roots = set()
+    for c in categories:
+        if c.name and "запчаст" in c.name.lower():
+            parts_roots.add(int(c.category_id))
+
+    children_map = {}
+    for c in categories:
+        if c.parent_id is None:
+            continue
+        children_map.setdefault(int(c.parent_id), []).append(int(c.category_id))
+
+    def collect_descendants(root_id: int) -> set[int]:
+        stack = [root_id]
+        out = set()
+        while stack:
+            x = stack.pop()
+            if x in out:
+                continue
+            out.add(x)
+            for ch in children_map.get(x, []):
+                stack.append(ch)
+        return out
+
+    parts_tree = set()
+    for rid in parts_roots:
+        parts_tree |= collect_descendants(rid)
+
+    # выбранная категория/бренд
+    selected_category_id = int(category_id_raw) if category_id_raw.isdigit() else None
+    selected_brand_id = int(brand_id_raw) if brand_id_raw.isdigit() else None
+
+    is_parts_mode = bool(selected_category_id and selected_category_id in parts_tree)
+
+    # 4) WHERE
+    params = []
+    where = []
+
+    # поиск (серверный, по всем страницам)
     if q:
         like = f"%{q}%"
-        where_sql = """
-            WHERE
-                (name LIKE ?)
-                OR (description LIKE ?)
-                OR (brand_name LIKE ?)
-                OR (category_name LIKE ?)
-        """
-        params = [like, like, like, like]
+        where.append("""
+            (
+                name LIKE ?
+                OR description LIKE ?
+                OR brand_name LIKE ?
+                OR category_name LIKE ?
+            )
+        """)
+        params += [like, like, like, like]
 
-    # 1) считаем всего строк по фильтру
+    # категория
+    if selected_category_id:
+        where.append("category_id = ?")
+        params.append(selected_category_id)
+
+    # цена
+    if price_from_raw:
+        try:
+            pf = float(price_from_raw.replace(",", "."))
+            where.append("price >= ?")
+            params.append(pf)
+        except:
+            price_from_raw = ""
+
+    if price_to_raw:
+        try:
+            pt = float(price_to_raw.replace(",", "."))
+            where.append("price <= ?")
+            params.append(pt)
+        except:
+            price_to_raw = ""
+
+    # ✅ доп. фильтры только если НЕ запчасти
+    if not is_parts_mode:
+        # бренд
+        if selected_brand_id:
+            where.append("id_brand = ?")
+            params.append(selected_brand_id)
+
+        # цвет/материал из description по шаблону "Цвет: ..." и "Материал: ..."
+        if color_raw:
+            c = color_raw.strip().lower()
+            where.append("LOWER(ISNULL(description,'')) LIKE ?")
+            params.append(f"%цвет:%{c}%")
+
+        if material_raw:
+            m = material_raw.strip().lower()
+            where.append("LOWER(ISNULL(description,'')) LIKE ?")
+            params.append(f"%материал:%{m}%")
+
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+
+    # 5) COUNT для пагинации
     cur.execute(f"SELECT COUNT(*) FROM dbo.vw_products {where_sql}", *params)
     total = int(cur.fetchone()[0])
 
@@ -61,7 +158,7 @@ def index():
 
     offset = (page - 1) * per_page
 
-    # 2) забираем только нужную страницу (но поиск применяется ко всем)
+    # 6) данные страницы
     cur.execute(f"""
         SELECT *
         FROM dbo.vw_products
@@ -78,9 +175,23 @@ def index():
         products=products,
         q=q,
         page=page,
-        total_pages=total_pages
-    )
+        total_pages=total_pages,
 
+        categories=categories,
+        brands=brands,
+
+        selected_category_id=selected_category_id,
+        selected_brand_id=selected_brand_id,
+
+        price_from=price_from_raw,
+        price_to=price_to_raw,
+
+        color=color_raw,
+        material=material_raw,
+
+        is_parts_mode=is_parts_mode,
+        parts_ids_csv=",".join(str(x) for x in sorted(parts_tree))
+    )
 # ✅ Страница товара (галерея по всем image_id)
 @auth_bp.route("/product/<int:pid>")
 def product(pid):
