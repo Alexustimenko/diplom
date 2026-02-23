@@ -192,6 +192,71 @@
             <input id="searchInput" class="search" placeholder="Поиск по товарам, описанию, бренду, категории…" value="{{ q if q else '' }}">
             <span class="muted" id="searchHint"></span>
         </div>
+        <form method="GET" action="/" class="search-row" style="margin-top:12px;">
+    <!-- чтобы поиск не сбрасывался -->
+    <input type="hidden" name="q" value="{{ q if q else '' }}">
+
+    <select id="categorySelect" name="category_id" class="search" style="max-width:340px;">
+        <option value="">(все категории)</option>
+        {% for c in categories %}
+            <option value="{{ c.category_id }}"
+                {% if selected_category_id and selected_category_id == c.category_id %}selected{% endif %}>
+                {{ c.name }}
+            </option>
+        {% endfor %}
+    </select>
+            {% if not is_parts_mode %}
+               <div id="nonPartsFilters" style="{% if is_parts_mode %}display:none;{% endif %}">
+    <select name="brand_id" class="search" style="max-width:260px;">
+        <option value="">(все бренды)</option>
+        {% for b in brands %}
+            <option value="{{ b.id_brand }}"
+                {% if selected_brand_id and selected_brand_id == b.id_brand %}selected{% endif %}>
+                {{ b.name }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <select name="color" class="search" style="max-width:220px;">
+        <option value="">(любой цвет)</option>
+        <option value="черный" {% if (color or '')|lower == 'черный' %}selected{% endif %}>Черный</option>
+        <option value="белый" {% if (color or '')|lower == 'белый' %}selected{% endif %}>Белый</option>
+        <option value="серый" {% if (color or '')|lower == 'серый' %}selected{% endif %}>Серый</option>
+        <option value="синий" {% if (color or '')|lower == 'синий' %}selected{% endif %}>Синий</option>
+        <option value="красный" {% if (color or '')|lower == 'красный' %}selected{% endif %}>Красный</option>
+    </select>
+
+    <select name="material" class="search" style="max-width:240px;">
+        <option value="">(любой материал)</option>
+        <option value="ткань" {% if (material or '')|lower == 'ткань' %}selected{% endif %}>Ткань</option>
+        <option value="экокожа" {% if (material or '')|lower == 'экокожа' %}selected{% endif %}>Экокожа</option>
+        <option value="кожа" {% if (material or '')|lower == 'кожа' %}selected{% endif %}>Кожа</option>
+        <option value="сетка" {% if (material or '')|lower == 'сетка' %}selected{% endif %}>Сетка</option>
+        <option value="пластик" {% if (material or '')|lower == 'пластик' %}selected{% endif %}>Пластик</option>
+        <option value="металл" {% if (material or '')|lower == 'металл' %}selected{% endif %}>Металл</option>
+    </select>
+</div>
+            {% endif %}
+
+
+
+    <input class="search" style="max-width:180px;"
+           name="price_from" placeholder="Цена от" value="{{ price_from if price_from else '' }}">
+
+    <input class="search" style="max-width:180px;"
+           name="price_to" placeholder="Цена до" value="{{ price_to if price_to else '' }}">
+
+    <button class="btn primary" type="submit">Фильтровать</button>
+
+    <a class="btn" href="/">Сброс</a>
+</form>
+
+{% if is_parts_mode %}
+  <div class="muted" style="margin-top:10px;">
+    Вы выбрали ветку <b>Запчасти</b> — показываем только фильтр по цене.
+  </div>
+{% endif %}
+
     </div>
 
     {% if products is none or products == [] %}
@@ -253,8 +318,15 @@
         </div>
     {% endif %}
     <div style="display:flex; gap:10px; justify-content:center; align-items:center; margin:18px 0;">
+  {% set qs = "q=" ~ (q or "") ~
+            "&category_id=" ~ (selected_category_id or "") ~
+            "&brand_id=" ~ (selected_brand_id or "") ~
+            "&color=" ~ (color or "") ~
+            "&material=" ~ (material or "") ~
+            "&price_from=" ~ (price_from or "") ~
+            "&price_to=" ~ (price_to or "") %}
   {% if page > 1 %}
-    <a href="/?q={{ q }}&page={{ page - 1 }}" class="btn">← Назад</a>
+    <a href="/?{{ qs }}&page={{ page - 1 }}" class="btn">← Назад</a>
   {% else %}
     <span class="btn" style="opacity:.4; pointer-events:none;">← Назад</span>
   {% endif %}
@@ -264,7 +336,7 @@
   </span>
 
   {% if page < total_pages %}
-    <a href="/?q={{ q }}&page={{ page + 1 }}" class="btn">Вперёд →</a>
+    <a href="/?{{ qs }}&page={{ page + 1 }}" class="btn">Вперёд →</a>
   {% else %}
     <span class="btn" style="opacity:.4; pointer-events:none;">Вперёд →</span>
   {% endif %}
@@ -350,6 +422,42 @@
   input.focus({ preventScroll: true });
   const v = input.value || "";
   input.setSelectionRange(v.length, v.length);
+})();
+</script>
+<script>
+(function(){
+    const cat = document.getElementById("categorySelect");
+    const nonParts = document.getElementById("nonPartsFilters");
+    if(!cat || !nonParts) return;
+
+    // категории, которые считаем "запчасти" (передаём из Flask)
+    const partsIds = new Set(
+        ("{{ parts_ids_csv|default('') }}").split(",").map(x => x.trim()).filter(Boolean)
+    );
+
+    function clearNonPartsValues(){
+        const brand = nonParts.querySelector("[name='brand_id']");
+        const color = nonParts.querySelector("[name='color']");
+        const material = nonParts.querySelector("[name='material']");
+        if(brand) brand.value = "";
+        if(color) color.value = "";
+        if(material) material.value = "";
+    }
+
+    function applyVisibility(){
+        const v = (cat.value || "").trim();
+        const isParts = v && partsIds.has(v);
+
+        nonParts.style.display = isParts ? "none" : "";
+
+        // если выбрали запчасти — чистим бренд/цвет/материал
+        if(isParts){
+            clearNonPartsValues();
+        }
+    }
+
+    cat.addEventListener("change", applyVisibility);
+    applyVisibility(); // на старт
 })();
 </script>
 </body>
