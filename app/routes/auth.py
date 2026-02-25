@@ -398,39 +398,53 @@ def admin():
                 name = request.form.get("name", "").strip()
                 description = request.form.get("description") or None
 
-                price = float(request.form["price"])
-                old_price = request.form.get("old_price") or None
-                stock = int(request.form["stock"])
+                if not name:
+                    error = "Название товара обязательно"
+                else:
+                    price = float(request.form["price"])
+                    old_price = request.form.get("old_price") or None
+                    stock = int(request.form["stock"])
 
-                category_id = request.form.get("category_id") or None
-                brand_id = request.form.get("brand_id") or None
+                    category_id = request.form.get("category_id") or None
+                    brand_id = request.form.get("brand_id") or None
 
-                old_price = float(old_price) if old_price else None
-                category_id = int(category_id) if category_id else None
-                brand_id = int(brand_id) if brand_id else None
+                    old_price = float(old_price) if old_price else None
+                    category_id = int(category_id) if category_id else None
+                    brand_id = int(brand_id) if brand_id else None
 
-                cur.execute("""
-                    EXEC dbo.sp_add_product
-                        @name = ?,
-                        @description = ?,
-                        @price = ?,
-                        @old_price = ?,
-                        @stock = ?,
-                        @category_id = ?,
-                        @brand_id = ?
-                """, name, description, price, old_price, stock, category_id, brand_id)
+                    # ✅ проверка на дубль названия (без учета регистра и лишних пробелов по краям)
+                    cur.execute("""
+                        SELECT TOP 1 product_id
+                        FROM dbo.products
+                        WHERE LTRIM(RTRIM(name)) = LTRIM(RTRIM(?))
+                    """, name)
+                    exists_row = cur.fetchone()
 
-                product_id = cur.fetchone()[0]
+                    if exists_row:
+                        error = f"Товар с названием '{name}' уже существует"
+                    else:
+                        cur.execute("""
+                            EXEC dbo.sp_add_product
+                                @name = ?,
+                                @description = ?,
+                                @price = ?,
+                                @old_price = ?,
+                                @stock = ?,
+                                @category_id = ?,
+                                @brand_id = ?
+                        """, name, description, price, old_price, stock, category_id, brand_id)
 
-                for f in request.files.getlist("images"):
-                    if f.filename:
-                        cur.execute(
-                            "INSERT INTO dbo.images(product_id, image_data) VALUES (?, ?)",
-                            product_id, f.read()
-                        )
+                        product_id = cur.fetchone()[0]
 
-                conn.commit()
-                success = "Товар добавлен"
+                        for f in request.files.getlist("images"):
+                            if f.filename:
+                                cur.execute(
+                                    "INSERT INTO dbo.images(product_id, image_data) VALUES (?, ?)",
+                                    product_id, f.read()
+                                )
+
+                        conn.commit()
+                        success = "Товар добавлен"
 
             elif action == "edit_product":
                 pid = int(request.form["product_id"])
@@ -469,8 +483,8 @@ def admin():
                 success = "Товар удалён"
 
             conn.close()
-
-            return redirect("/admin")
+            if not error:
+                return redirect("/admin")
 
         except Exception as e:
             try:
@@ -502,6 +516,7 @@ def admin():
         tab="products",
         error=error,
         success=success
+
     )
 
 
