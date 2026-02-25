@@ -4,26 +4,22 @@
   <meta charset="utf-8" />
   <title>Совместимость запчастей</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 18px; }
-    .box { max-width: 980px; margin: 0 auto; }
+    body { font-family: Arial, sans-serif; padding: 18px; background:#f7fbfb; }
+    .box { max-width: 1180px; margin: 0 auto; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
     .field { flex:1; min-width: 280px; }
-    label { font-weight: 800; display:block; margin-bottom:6px; }
-    input { width:100%; padding:10px; border:2px solid #33CCCC; border-radius:10px; }
-    button { padding:10px 14px; border-radius:10px; border:0; background:#FF7400; color:white; font-weight:900; cursor:pointer; }
+    label { font-weight: 800; display:block; margin-bottom:6px; color:#0b3b3b; }
+    input {
+      width:100%; padding:10px; border:2px solid #33CCCC; border-radius:10px; box-sizing:border-box;
+    }
+    button {
+      padding:10px 14px; border-radius:10px; border:0; background:#FF7400; color:white;
+      font-weight:900; cursor:pointer;
+    }
+    .btn-lite{
+      background:white; color:#0b3b3b; border:2px solid #33CCCC;
+    }
     .hint { color:#2b6666; font-weight:700; margin-top:10px; }
-
-    .matrix { display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:16px; }
-    .col { border-radius:14px; padding:14px; }
-    .col.good { background: #e8fff0; border:2px solid #22a055; }
-    .col.bad  { background: #ffecec; border:2px solid #d23b3b; }
-    .col h3 { margin:0 0 10px 0; }
-
-    .cards { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
-    .card { background:white; border-radius:12px; padding:10px; display:flex; gap:10px; align-items:center; box-shadow:0 6px 14px rgba(0,0,0,0.08); }
-    .card img { width:54px; height:54px; object-fit:cover; border-radius:10px; border:1px solid #eee; }
-    .name { font-weight:900; }
-    .brand { color:#666; font-weight:700; font-size:12px; }
 
     .dropdown { position: relative; }
     .list {
@@ -35,9 +31,76 @@
     }
     .item { padding:10px; cursor:pointer; font-weight:800; }
     .item:hover { background:#f5fbfb; }
-    .okline { margin-top:14px; font-weight:900; }
+
+    .selected-parts-wrap{
+      margin-top:14px;
+      background:white;
+      border-radius:14px;
+      padding:12px;
+      box-shadow:0 8px 18px rgba(0,0,0,0.08);
+    }
+    .selected-parts-title{
+      font-weight:900; color:#0b3b3b; margin-bottom:8px;
+    }
+    .chips{
+      display:flex; flex-wrap:wrap; gap:8px;
+    }
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      background:#eefafa; border:2px solid #33CCCC; border-radius:999px;
+      padding:6px 10px; font-weight:800; color:#0b3b3b;
+    }
+    .chip button{
+      background:#ff4d4d; color:white; border:0; border-radius:999px;
+      width:22px; height:22px; padding:0; line-height:22px; cursor:pointer;
+      font-weight:900;
+    }
+
+    .results{
+      margin-top:16px;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+    .part-block{
+      background:white;
+      border-radius:16px;
+      padding:14px;
+      box-shadow:0 10px 22px rgba(0,0,0,0.08);
+      border:2px solid #e8eeee;
+    }
+    .part-header{
+      display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .part-title{
+      font-weight:900; color:#0b3b3b; font-size:18px;
+    }
+    .okline { font-weight:900; }
     .ok { color:#148a00; }
     .no { color:#d10000; }
+
+    .matrix { display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:12px; }
+    .col { border-radius:14px; padding:14px; }
+    .col.good { background: #e8fff0; border:2px solid #22a055; }
+    .col.bad  { background: #ffecec; border:2px solid #d23b3b; }
+    .col h3 { margin:0 0 10px 0; }
+
+    .cards { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
+    .card {
+      background:white; border-radius:12px; padding:10px; display:flex; gap:10px; align-items:center;
+      box-shadow:0 6px 14px rgba(0,0,0,0.08);
+    }
+    .card img { width:54px; height:54px; object-fit:cover; border-radius:10px; border:1px solid #eee; }
+    .name { font-weight:900; }
+    .brand { color:#666; font-weight:700; font-size:12px; }
+
+    .muted { color:#5c7a7a; font-size:13px; font-weight:700; }
+
+    @media (max-width: 900px){
+      .matrix { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -49,37 +112,38 @@
       <label>Товар (кресло/диван):</label>
       <input id="productInput" placeholder="Начни вводить название..." autocomplete="off">
       <div id="productList" class="list"></div>
+      <div class="muted" style="margin-top:6px;">Выбери товар кликом из подсказки</div>
     </div>
 
     <div class="field dropdown">
-      <label>Запчасть:</label>
+      <label>Запчасть (можно добавить несколько):</label>
       <input id="partInput" placeholder="Начни вводить запчасть..." autocomplete="off">
       <div id="partList" class="list"></div>
+      <div class="muted" style="margin-top:6px;">Каждый клик по подсказке добавляет запчасть в список</div>
     </div>
 
-    <div style="padding-top:28px;">
+    <div style="padding-top:28px; display:flex; gap:8px; flex-wrap:wrap;">
       <button id="checkBtn">Проверить</button>
+      <button id="clearPartsBtn" type="button" class="btn-lite">Очистить запчасти</button>
     </div>
+  </div>
+
+  <div class="selected-parts-wrap">
+    <div class="selected-parts-title">Выбранные запчасти</div>
+    <div id="partsChips" class="chips"></div>
+    <div id="partsEmpty" class="muted">Пока ничего не выбрано.</div>
   </div>
 
   <div id="status" class="hint"></div>
-  <div id="resultLine" class="okline"></div>
 
-  <div id="matrix" class="matrix" style="display:none;">
-    <div class="col good">
-      <h3>Совместима с</h3>
-      <div id="goodCards" class="cards"></div>
-    </div>
-    <div class="col bad">
-      <h3>Несовместима с</h3>
-      <div id="badCards" class="cards"></div>
-    </div>
-  </div>
+  <div id="results" class="results"></div>
 </div>
 
 <script>
   let selectedProductId = null;
-  let selectedPartId = null;
+
+  // список выбранных запчастей: [{id, name}]
+  let selectedParts = [];
 
   function debounce(fn, ms=200){
     let t;
@@ -109,32 +173,87 @@
   const productList = document.getElementById("productList");
   const partList = document.getElementById("partList");
   const status = document.getElementById("status");
-  const matrix = document.getElementById("matrix");
-  const goodCards = document.getElementById("goodCards");
-  const badCards = document.getElementById("badCards");
-  const resultLine = document.getElementById("resultLine");
+  const resultsEl = document.getElementById("results");
+  const partsChips = document.getElementById("partsChips");
+  const partsEmpty = document.getElementById("partsEmpty");
+  const clearPartsBtn = document.getElementById("clearPartsBtn");
+
+  function escapeHtml(s){
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function cardHtml(x){
+    return `
+      <div class="card">
+        <img src="${escapeHtml(x.img)}" alt="">
+        <div>
+          <div class="name">${escapeHtml(x.name)}</div>
+          <div class="brand">${escapeHtml(x.brand ?? "")}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSelectedParts(){
+    partsChips.innerHTML = "";
+
+    if(!selectedParts.length){
+      partsEmpty.style.display = "";
+      return;
+    }
+
+    partsEmpty.style.display = "none";
+
+    for(const p of selectedParts){
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.innerHTML = `
+        <span>${escapeHtml(p.name)}</span>
+        <button type="button" title="Удалить">×</button>
+      `;
+      chip.querySelector("button").onclick = () => {
+        selectedParts = selectedParts.filter(x => x.id !== p.id);
+        renderSelectedParts();
+      };
+      partsChips.appendChild(chip);
+    }
+  }
+
+  function addSelectedPart(it){
+    // защита от дублей
+    if(selectedParts.some(x => x.id === it.id)) return;
+    selectedParts.push({id: it.id, name: it.name});
+    renderSelectedParts();
+  }
 
   const onProductType = debounce(async ()=>{
     const q = productInput.value.trim();
-    selectedProductId = null;
+    selectedProductId = null; // пока не выберет из списка
     if(q.length < 1){ productList.style.display="none"; return; }
+
     const items = await fetchJson(`/api/search/products?q=${encodeURIComponent(q)}`);
     renderDropdown(productList, items, (it)=>{
       selectedProductId = it.id;
       productInput.value = it.name;
-      productList.style.display="none";
+      productList.style.display = "none";
     });
   }, 200);
 
   const onPartType = debounce(async ()=>{
     const q = partInput.value.trim();
-    selectedPartId = null;
     if(q.length < 1){ partList.style.display="none"; return; }
+
     const items = await fetchJson(`/api/search/parts?q=${encodeURIComponent(q)}`);
     renderDropdown(partList, items, (it)=>{
-      selectedPartId = it.id;
-      partInput.value = it.name;
-      partList.style.display="none";
+      addSelectedPart(it);
+      partInput.value = "";
+      partList.style.display = "none";
+      partInput.focus();
     });
   }, 200);
 
@@ -146,13 +265,42 @@
     if(!partList.contains(e.target) && e.target !== partInput) partList.style.display="none";
   });
 
-  function cardHtml(x){
+  clearPartsBtn.onclick = ()=>{
+    selectedParts = [];
+    renderSelectedParts();
+    partInput.focus();
+  };
+
+  function partBlockHtml(res){
+    const msg = res.selected_ok
+      ? `<span class="ok">✅ Запчасть «${escapeHtml(res.part_name)}» совместима с вашим товаром.</span>`
+      : `<span class="no">❌ Запчасть «${escapeHtml(res.part_name)}» НЕ совместима с вашим товаром.</span>`;
+
     return `
-      <div class="card">
-        <img src="${x.img}" alt="">
-        <div>
-          <div class="name">${x.name}</div>
-          <div class="brand">${x.brand ?? ""}</div>
+      <div class="part-block">
+        <div class="part-header">
+          <div class="part-title">${escapeHtml(res.part_name)}</div>
+          <div class="okline">${msg}</div>
+        </div>
+
+        <div class="matrix">
+          <div class="col good">
+            <h3>Совместима с</h3>
+            <div class="cards">
+              ${res.compatible && res.compatible.length
+                ? res.compatible.map(cardHtml).join("")
+                : `<div class="muted">Нет данных.</div>`}
+            </div>
+          </div>
+
+          <div class="col bad">
+            <h3>Несовместима с</h3>
+            <div class="cards">
+              ${res.incompatible && res.incompatible.length
+                ? res.incompatible.map(cardHtml).join("")
+                : `<div class="muted">Нет данных.</div>`}
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -160,41 +308,47 @@
 
   document.getElementById("checkBtn").onclick = async ()=>{
     status.textContent = "";
-    resultLine.textContent = "";
-    matrix.style.display = "none";
-    goodCards.innerHTML = "";
-    badCards.innerHTML = "";
+    resultsEl.innerHTML = "";
 
     if(!selectedProductId){
       status.textContent = "Выбери товар из подсказки (клик по варианту).";
       return;
     }
-    if(!selectedPartId){
-      status.textContent = "Выбери запчасть из подсказки (клик по варианту).";
+    if(!selectedParts.length){
+      status.textContent = "Добавь хотя бы одну запчасть из подсказки.";
       return;
     }
 
     status.textContent = "Проверяем...";
-    const r = await fetch("/api/compat/matrix", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({product_id: selectedProductId, part_id: selectedPartId})
-    });
-    const data = await r.json();
-    if(!data.ok){
-      status.textContent = data.error || "Ошибка";
-      return;
+    try {
+      const r = await fetch("/api/compat/matrix", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          product_id: selectedProductId,
+          part_ids: selectedParts.map(x => x.id)
+        })
+      });
+
+      const data = await r.json();
+      if(!data.ok){
+        status.textContent = data.error || "Ошибка";
+        return;
+      }
+
+      status.textContent = "";
+      const arr = Array.isArray(data.results) ? data.results : [];
+      resultsEl.innerHTML = arr.map(partBlockHtml).join("");
+
+      if(!arr.length){
+        status.textContent = "Нет данных по выбранным запчастям.";
+      }
+    } catch (e){
+      status.textContent = "Ошибка запроса";
     }
-
-    status.textContent = "";
-    resultLine.innerHTML = data.selected_ok
-      ? `<span class="ok">✅ Данная запчасть совместима с выбранным товаром.</span>`
-      : `<span class="no">❌ Данная запчасть НЕ совместима с выбранным товаром.</span>`;
-
-    goodCards.innerHTML = data.compatible.map(cardHtml).join("");
-    badCards.innerHTML  = data.incompatible.map(cardHtml).join("");
-    matrix.style.display = "grid";
   };
+
+  renderSelectedParts();
 </script>
 </body>
 </html>

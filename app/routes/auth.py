@@ -1194,44 +1194,76 @@ def api_compat_matrix():
     if gate:
         return gate
 
-    product_id = request.json.get("product_id")
-    part_id = request.json.get("part_id")
-    if not product_id or not part_id:
-        return jsonify({"ok": False, "error": "product_id and part_id required"}), 400
+    data = request.get_json(silent=True) or {}
+    product_id = data.get("product_id")
+
+    # поддержка старого формата (part_id) и нового (part_ids)
+    part_ids = data.get("part_ids")
+    if part_ids is None and data.get("part_id"):
+        part_ids = [data.get("part_id")]
+
+    if not product_id or not part_ids or not isinstance(part_ids, list):
+        return jsonify({"ok": False, "error": "product_id and part_ids required"}), 400
+
+    # нормализуем список part_ids
+    norm_part_ids = []
+    seen = set()
+    for x in part_ids:
+        try:
+            pid = int(x)
+            if pid > 0 and pid not in seen:
+                norm_part_ids.append(pid)
+                seen.add(pid)
+        except:
+            pass
+
+    if not norm_part_ids:
+        return jsonify({"ok": False, "error": "No valid part_ids"}), 400
+
+    product_id = int(product_id)
 
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("EXEC dbo.sp_part_compat_matrix ?", int(part_id))
-    rows = cur.fetchall()
+
+    results = []
+
+    for part_id in norm_part_ids:
+        cur.execute("EXEC dbo.sp_part_compat_matrix ?", part_id)
+        rows = cur.fetchall()
+
+        compatible = []
+        incompatible = []
+        part_name = None
+
+        for r in rows:
+            part_name = getattr(r, "part_name", None)
+            item = {
+                "id": int(r.product_id),
+                "name": r.product_name,
+                "brand": getattr(r, "brand_name", None),
+                "img": f"/product_image/{int(r.product_id)}",
+            }
+            if int(r.is_compatible) == 1:
+                compatible.append(item)
+            else:
+                incompatible.append(item)
+
+        selected_ok = any(x["id"] == product_id for x in compatible)
+
+        results.append({
+            "part_id": part_id,
+            "part_name": part_name or f"Запчасть #{part_id}",
+            "selected_ok": selected_ok,
+            "compatible": compatible,
+            "incompatible": incompatible
+        })
+
     conn.close()
-
-    # разделяем на compatible / incompatible
-    compatible = []
-    incompatible = []
-    part_name = None
-
-    for r in rows:
-        part_name = r.part_name
-        item = {
-            "id": int(r.product_id),
-            "name": r.product_name,
-            "brand": r.brand_name,
-            "img": f"/product_image/{int(r.product_id)}",
-        }
-        if int(r.is_compatible) == 1:
-            compatible.append(item)
-        else:
-            incompatible.append(item)
-
-    # отдельно: подходит ли выбранная запчасть к выбранному товару
-    selected_ok = any(x["id"] == int(product_id) for x in compatible)
 
     return jsonify({
         "ok": True,
-        "selected_ok": selected_ok,
-        "part_name": part_name,
-        "compatible": compatible,
-        "incompatible": incompatible
+        "product_id": product_id,
+        "results": results
     })
 @auth_bp.route("/smart", methods=["GET", "POST"])
 def smart_pick():
