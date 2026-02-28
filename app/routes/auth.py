@@ -598,32 +598,146 @@ def admin_reports():
 
 
 
+import io
+from datetime import datetime
+
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+
+import io
+import os
+from datetime import datetime
+
+from flask import current_app, send_file
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image as XLImage
+
 @auth_bp.route("/admin/reports/excel")
 def export_excel():
     gate = _require_admin()
     if gate:
         return gate
 
+    # 1) данные
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT * FROM dbo.vw_report_products_per_category ORDER BY category_name")
     rows = cur.fetchall()
     conn.close()
 
+    # 2) excel
     wb = Workbook()
     ws = wb.active
-    ws.append(["ID", "Категория", "Количество"])
+    ws.title = "Отчет"
 
-    for r in rows:
-        ws.append([r.category_id, r.category_name, r.products_count])
+    bold = Font(bold=True)
+    bold_big = Font(bold=True, size=14)
+    bold_mid = Font(bold=True, size=12)
 
+    wrap_left = Alignment(wrap_text=True, vertical="top", horizontal="left")
+    center = Alignment(horizontal="center", vertical="center")
+    center_wrap = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    thin = Side(style="thin", color="000000")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    # --- ШАПКА: ЛОГО + РЕКВИЗИТЫ ---
+    # Ячейка под лого (A1:B1) — делаем повыше
+    ws.merge_cells("A1:B1")
+    ws.row_dimensions[1].height = 60
+
+    # путь к лого (проверь место!)
+    # вариант 1: /static/rolmark_logo.png
+    logo_path = os.path.join(current_app.root_path, "static", "rolmark_logo.png")
+
+    # если у тебя реально лежит в app/static — то так:
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(current_app.root_path, "app", "static", "rolmark_logo.png")
+
+    if os.path.exists(logo_path):
+        img = XLImage(logo_path)
+        # размер (можешь менять)
+        img.width = 170
+        img.height = 55
+        ws.add_image(img, "A1")
+    else:
+        # запасной вариант: текст, если не нашли файл
+        ws["A1"] = "ROLMARK"
+        ws["A1"].font = bold_big
+        ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+
+    requisites = (
+        "Юр.адрес: 220024, Республика Беларусь, г.Минск, ул.Бабушкина, д.4а каб. 33\n"
+        "Салон-офис: 220006, Республика Беларусь, г.Минск, ул.Маяковского, д.26, каб.1 (вход со двора)\n"
+        "Р/с BY86TECN30121248300010000000 в ОАО «Технобанк», г.Минск, ул.Кропоткина,44 БИК TECNBY22\n"
+        "УНП 190640194\n"
+        "тел./факс: +375 17 348 99 82\n"
+        "МТС +375 33 361 65 65, Velcom +375 29 361 65 65\n"
+        "Наша электронная почта: rolmark.trade@gmail.com"
+    )
+
+    ws["A2"] = requisites
+    ws["A2"].alignment = wrap_left
+    ws["A2"].font = Font(size=9)
+    ws.merge_cells("A2:B5")
+
+    # Заголовки по центру
+    ws["A6"] = "ОТЧЁТ"
+    ws["A6"].font = bold_big
+    ws["A6"].alignment = center
+    ws.merge_cells("A6:B6")
+
+    ws["A7"] = "по количеству товаров в категориях"
+    ws["A7"].font = bold_mid
+    ws["A7"].alignment = center
+    ws.merge_cells("A7:B7")
+
+    ws["A8"] = f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}"
+    ws["A8"].font = bold
+    ws["A8"].alignment = center
+    ws.merge_cells("A8:B8")
+
+    # --- ТАБЛИЦА (без ID) ---
+    start_row = 10
+
+    ws.cell(row=start_row, column=1, value="Категория").font = bold
+    ws.cell(row=start_row, column=2, value="Количество").font = bold
+    ws.cell(row=start_row, column=1).alignment = center_wrap
+    ws.cell(row=start_row, column=2).alignment = center_wrap
+
+    r0 = start_row + 1
+    for i, r in enumerate(rows):
+        rr = r0 + i
+        ws.cell(row=rr, column=1, value=str(r.category_name)).alignment = Alignment(vertical="top", wrap_text=True)
+        ws.cell(row=rr, column=2, value=int(r.products_count)).alignment = center
+
+    last_row = r0 + len(rows) - 1 if rows else start_row
+
+    for rr in range(start_row, last_row + 1):
+        for cc in range(1, 3):
+            ws.cell(row=rr, column=cc).border = border
+
+    # закрепим верх (строка после заголовка таблицы)
+    ws.freeze_panes = ws["A11"]
+
+    # ширины колонок
+    for col in range(1, 3):
+        max_len = 0
+        for rr in range(1, last_row + 1):
+            v = ws.cell(row=rr, column=col).value
+            if v is None:
+                continue
+            max_len = max(max_len, len(str(v)))
+        ws.column_dimensions[get_column_letter(col)].width = min(max(12, max_len + 2), 60)
+
+    # 3) отдаём файл
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-
     return send_file(buf, as_attachment=True, download_name="report.xlsx")
-
-
 from flask import Blueprint, render_template, request, redirect, url_for, session, send_file, current_app
 from app.db import get_conn
 import io
