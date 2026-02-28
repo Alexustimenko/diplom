@@ -103,13 +103,19 @@
         .desc-wrap{ width:100%; }
 
         .desc-cell{
-            max-width: 340px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color:#0b3b3b;
-            font-weight:700;
-        }
+  max-width: 340px;
+  white-space: normal;        /* ✅ разрешаем перенос */
+  overflow-wrap: anywhere;    /* ✅ ломаем длинные слова/безпробельные строки */
+  word-break: break-word;
+  color:#0b3b3b;
+  font-weight:700;
+
+  /* ✅ ограничим высоту на 3 строки, чтобы таблица не становилась огромной */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;      /* сколько строк показывать */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
         /* вкладки */
         .tabs{
@@ -133,6 +139,23 @@
             border-color:var(--orange);
             color:white;
         }
+/* 1) Ячейка "Действия" НЕ выпускает содержимое наружу */
+th:last-child, td:last-child{
+  overflow: hidden;           /* главное */
+}
+
+/* 2) Контейнер с кнопками всегда внутри ячейки */
+.actions{
+  max-width: 100%;
+  flex-wrap: nowrap;          /* чтобы не разъезжалось */
+}
+
+/* 3) Кнопки не шире ячейки */
+.actions .btn{
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;        /* чтобы текст не ломался */
+}
     </style>
 </head>
 
