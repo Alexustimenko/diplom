@@ -156,6 +156,18 @@ th:last-child, td:last-child{
   box-sizing: border-box;
   white-space: nowrap;        /* чтобы текст не ломался */
 }
+        .collapse-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .collapse-btn{
+    border:0;
+    background:transparent;
+    padding:0;
+  }
     </style>
 </head>
 
@@ -419,266 +431,325 @@ th:last-child, td:last-child{
             <!-- CATALOG TAB -->
 
             <!-- BRANDS -->
-            <div class="card">
-                <div class="section-title">
-                    <h2>Бренды</h2>
-                    <p class="muted">Добавление, редактирование, удаление</p>
-                </div>
+            <!-- BRANDS (collapsible) -->
+<details class="card" id="brandsBox" open>
+  <summary class="collapse-head" style="cursor:pointer;">
+    <div class="section-title" style="margin:0; width:100%;">
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <h2 style="margin:0;">Бренды</h2>
+        <p class="muted" style="margin:0;">Добавление, редактирование, удаление</p>
+      </div>
 
-                <form method="POST" class="row">
-                    <input type="hidden" name="action" value="add_brand">
-                    <input name="brand_name" placeholder="Название бренда" required>
-                    <button class="btn primary" type="submit">Добавить</button>
-                </form>
+      <button type="button" class="btn collapse-btn" id="brandsToggleText">Свернуть</button>
+    </div>
+  </summary>
 
-                <table>
-                    <tr>
-                        <th style="width:120px;">ID</th>
-                        <th>Название</th>
-                        <th style="width:300px;">Действия</th>
-                    </tr>
+  <div style="margin-top:12px;">
+    <form method="POST" class="row">
+      <input type="hidden" name="action" value="add_brand">
+      <input name="brand_name" placeholder="Название бренда" required>
+      <button class="btn primary" type="submit">Добавить</button>
+    </form>
 
-                    {% for b in brands %}
-                    <tr>
-                        <td>{{ b.id_brand }}</td>
-                        <td>{{ b.name }}</td>
-                        <td>
-                            <div class="actions">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="edit_brand">
-                                    <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
-                                    <input type="hidden" name="brand_name" id="edit_name_{{ b.id_brand }}">
-                                    <button class="btn" type="button"
-                                        onclick="
-                                            const v = prompt('Новое название бренда:', '{{ b.name }}');
-                                            if(v && v.trim().length > 0){
-                                                document.getElementById('edit_name_{{ b.id_brand }}').value = v.trim();
-                                                this.form.submit();
-                                            }
-                                        "
-                                    >Редактировать</button>
-                                </form>
+    <table>
+      <tr>
+        <th style="width:120px;">ID</th>
+        <th>Название</th>
+        <th style="width:300px;">Действия</th>
+      </tr>
 
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="delete_brand">
-                                    <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
-                                    <button class="btn primary" type="submit"
-                                        onclick="return confirm('Удалить бренд {{ b.name }}?');"
-                                    >Удалить</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </table>
-            </div>
+      {% for b in brands %}
+      <tr>
+        <td>{{ b.id_brand }}</td>
+        <td>{{ b.name }}</td>
+        <td>
+          <div class="actions">
+            <form method="POST">
+              <input type="hidden" name="action" value="edit_brand">
+              <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
+              <input type="hidden" name="brand_name" id="edit_name_{{ b.id_brand }}">
+              <button class="btn" type="button"
+                onclick="
+                  const v = prompt('Новое название бренда:', '{{ b.name }}');
+                  if(v && v.trim().length > 0){
+                    document.getElementById('edit_name_{{ b.id_brand }}').value = v.trim();
+                    this.form.submit();
+                  }
+                "
+              >Редактировать</button>
+            </form>
 
-            <!-- CATEGORIES -->
-            <div class="card">
-                <div class="section-title">
-                    <h2>Категории / Подкатегории</h2>
-                    <p class="muted">Добавление, редактирование, удаление</p>
-                </div>
+            <form method="POST">
+              <input type="hidden" name="action" value="delete_brand">
+              <input type="hidden" name="brand_id" value="{{ b.id_brand }}">
+              <button class="btn primary" type="submit"
+                onclick="return confirm('Удалить бренд {{ b.name }}?');"
+              >Удалить</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</details>
 
-                <form method="POST" class="row">
-                    <input type="hidden" name="action" value="add_category">
-                    <input name="category_name" placeholder="Название категории" required>
+            <!-- CATEGORIES (collapsible) -->
+<details class="card" id="catsBox" open>
+  <summary class="collapse-head" style="cursor:pointer;">
+    <div class="section-title" style="margin:0; width:100%;">
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <h2 style="margin:0;">Категории / Подкатегории</h2>
+        <p class="muted" style="margin:0;">Добавление, редактирование, удаление</p>
+      </div>
 
-                    <select name="parent_id">
-                        <option value="">(без родителя)</option>
-                        {% for c in categories %}
-                            <option value="{{ c.category_id }}">{{ c.name }}</option>
-                        {% endfor %}
-                    </select>
+      <button type="button" class="btn collapse-btn" id="catsToggleText" onclick="event.preventDefault(); event.stopPropagation();">
+  Свернуть
+</button>
+    </div>
+  </summary>
 
-                    <button class="btn primary" type="submit">Добавить</button>
-                </form>
+  <div style="margin-top:12px;">
+    <form method="POST" class="row">
+      <input type="hidden" name="action" value="add_category">
+      <input name="category_name" placeholder="Название категории" required>
 
-                <table>
-                    <tr>
-                        <th style="width:120px;">ID</th>
-                        <th>Название</th>
-                        <th>Родитель</th>
-                        <th style="width:300px;">Действия</th>
-                    </tr>
+      <select name="parent_id">
+        <option value="">(без родителя)</option>
+        {% for c in categories %}
+          <option value="{{ c.category_id }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
 
+      <button class="btn primary" type="submit">Добавить</button>
+    </form>
+
+    <table>
+      <tr>
+        <th style="width:120px;">ID</th>
+        <th>Название</th>
+        <th>Родитель</th>
+        <th style="width:300px;">Действия</th>
+      </tr>
+
+      {% for c in categories %}
+      <tr>
+        <td>{{ c.category_id }}</td>
+        <td>{{ c.name }}</td>
+        <td>{{ c.parent_name if c.parent_name else "-" }}</td>
+        <td>
+          <div class="actions">
+            <form method="POST">
+              <input type="hidden" name="action" value="edit_category">
+              <input type="hidden" name="category_id" value="{{ c.category_id }}">
+              <input type="hidden" name="category_name" id="cat_name_{{ c.category_id }}">
+              <input type="hidden" name="parent_id" id="cat_parent_{{ c.category_id }}">
+
+              <button class="btn" type="button"
+                onclick="
+                  const newName = prompt('Новое название категории:', '{{ c.name }}');
+                  if(!newName || newName.trim().length === 0) return;
+
+                  const parentHint = 'Введите ID родителя (пусто = без родителя).\\nТекущий parent_id: {{ c.parent_id if c.parent_id else '' }}';
+                  const newParent = prompt(parentHint, '{{ c.parent_id if c.parent_id else '' }}');
+                  const parentValue = (newParent === null) ? '' : newParent.trim();
+
+                  document.getElementById('cat_name_{{ c.category_id }}').value = newName.trim();
+                  document.getElementById('cat_parent_{{ c.category_id }}').value = parentValue;
+                  this.form.submit();
+                "
+              >Редактировать</button>
+            </form>
+
+            <form method="POST">
+              <input type="hidden" name="action" value="delete_category">
+              <input type="hidden" name="category_id" value="{{ c.category_id }}">
+              <button class="btn primary" type="submit"
+                onclick="return confirm('Удалить категорию {{ c.name }}?');"
+              >Удалить</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</details>
+
+         <!-- PRODUCTS -->
+<details class="card" id="productsBox" open>
+  <summary class="collapse-head" style="cursor:pointer;">
+    <div class="section-title" style="margin:0; width:100%;">
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <h2 style="margin:0;">Товары</h2>
+        <p class="muted" style="margin:0;">Добавление / Редактирование / Удаление + несколько картинок (BLOB)</p>
+      </div>
+
+      <button type="button"
+              class="btn collapse-btn"
+              id="productsToggleText"
+              onclick="event.preventDefault(); event.stopPropagation();">
+        Свернуть
+      </button>
+    </div>
+  </summary>
+
+  <div style="margin-top:12px;">
+    <!-- ADD PRODUCT -->
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="add_product">
+
+      <div class="row">
+        <input name="name" placeholder="Название" required>
+        <input name="price" placeholder="Цена" required>
+        <input name="old_price" placeholder="Старая цена (опц.)">
+        <input name="stock" placeholder="Количество" required>
+
+        <select name="category_id">
+          <option value="">(категория не выбрана)</option>
+          {% for c in categories %}
+            <option value="{{ c.category_id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+
+        <select name="brand_id">
+          <option value="">(бренд не выбран)</option>
+          {% for b in brands %}
+            <option value="{{ b.id_brand }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+
+        <input type="file" name="images" multiple>
+        <button class="btn primary" type="submit">Добавить товар</button>
+      </div>
+
+      <div class="desc-wrap" style="margin-top:12px;">
+        <textarea name="description" placeholder="Описание (опционально)"></textarea>
+      </div>
+    </form>
+
+    <table>
+      <tr>
+        <th style="width:80px;">ID</th>
+        <th style="width:90px;">Фото</th>
+        <th>Название</th>
+        <th style="width:360px;">Описание</th>
+        <th style="width:120px;">Цена</th>
+        <th style="width:140px;">Старая цена</th>
+        <th style="width:110px;">Кол-во</th>
+        <th style="width:160px;">Категория</th>
+        <th style="width:160px;">Бренд</th>
+        <th style="width:380px;">Действия</th>
+      </tr>
+
+      {% for p in products %}
+      <tr>
+        <td>{{ p.product_id }}</td>
+        <td><img class="thumb" src="/product_image/{{ p.product_id }}" alt=""></td>
+        <td style="font-weight:900;color:#0b3b3b;">{{ p.name }}</td>
+
+        <td class="desc-cell" title="{{ p.description if p.description else '' }}">
+          {{ p.description if p.description else "-" }}
+        </td>
+
+        <td style="font-weight:900;color:var(--orange);">{{ p.price }}</td>
+        <td>{{ p.old_price if p.old_price else "-" }}</td>
+        <td>{{ p.stock_quantity }}</td>
+        <td>{{ p.category_name if p.category_name else "-" }}</td>
+        <td>{{ p.brand_name if p.brand_name else "-" }}</td>
+        <td>
+          <div class="actions">
+            <!-- EDIT -->
+            <details>
+              <summary class="btn">Редактировать</summary>
+              <form method="POST" enctype="multipart/form-data" class="edit-form">
+                <input type="hidden" name="action" value="edit_product">
+                <input type="hidden" name="product_id" value="{{ p.product_id }}">
+
+                <div class="row">
+                  <input name="name" value="{{ p.name }}" required>
+                  <input name="price" value="{{ p.price }}" required>
+                  <input name="old_price" value="{{ p.old_price if p.old_price else '' }}" placeholder="Старая цена (опц.)">
+                  <input name="stock" value="{{ p.stock_quantity }}" required>
+
+                  <select name="category_id">
+                    <option value="">(категория не выбрана)</option>
                     {% for c in categories %}
-                    <tr>
-                        <td>{{ c.category_id }}</td>
-                        <td>{{ c.name }}</td>
-                        <td>{{ c.parent_name if c.parent_name else "-" }}</td>
-                        <td>
-                            <div class="actions">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="edit_category">
-                                    <input type="hidden" name="category_id" value="{{ c.category_id }}">
-                                    <input type="hidden" name="category_name" id="cat_name_{{ c.category_id }}">
-                                    <input type="hidden" name="parent_id" id="cat_parent_{{ c.category_id }}">
-
-                                    <button class="btn" type="button"
-                                        onclick="
-                                            const newName = prompt('Новое название категории:', '{{ c.name }}');
-                                            if(!newName || newName.trim().length === 0) return;
-
-                                            const parentHint = 'Введите ID родителя (пусто = без родителя).\\nТекущий parent_id: {{ c.parent_id if c.parent_id else '' }}';
-                                            const newParent = prompt(parentHint, '{{ c.parent_id if c.parent_id else '' }}');
-                                            const parentValue = (newParent === null) ? '' : newParent.trim();
-
-                                            document.getElementById('cat_name_{{ c.category_id }}').value = newName.trim();
-                                            document.getElementById('cat_parent_{{ c.category_id }}').value = parentValue;
-                                            this.form.submit();
-                                        "
-                                    >Редактировать</button>
-                                </form>
-
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="delete_category">
-                                    <input type="hidden" name="category_id" value="{{ c.category_id }}">
-                                    <button class="btn primary" type="submit"
-                                        onclick="return confirm('Удалить категорию {{ c.name }}?');"
-                                    >Удалить</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
+                      <option value="{{ c.category_id }}" {% if p.category_id == c.category_id %}selected{% endif %}>{{ c.name }}</option>
                     {% endfor %}
-                </table>
-            </div>
+                  </select>
 
-            <!-- PRODUCTS -->
-            <div class="card">
-                <div class="section-title">
-                    <h2>Товары</h2>
-                    <p class="muted">Добавление / Редактирование / Удаление + несколько картинок (BLOB)</p>
+                  <select name="brand_id">
+                    <option value="">(бренд не выбран)</option>
+                    {% for b in brands %}
+                      <option value="{{ b.id_brand }}" {% if p.id_brand == b.id_brand %}selected{% endif %}>{{ b.name }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
 
-                <!-- ADD PRODUCT -->
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="action" value="add_product">
+                <div class="desc-wrap">
+                  <textarea name="description" placeholder="Описание (опционально)">{{ p.description if p.description else '' }}</textarea>
+                </div>
 
-                    <div class="row">
-                        <input name="name" placeholder="Название" required>
-                        <input name="price" placeholder="Цена" required>
-                        <input name="old_price" placeholder="Старая цена (опц.)">
-                        <input name="stock" placeholder="Количество" required>
+                <div class="row">
+                  <input type="file" name="images" multiple>
+                  <label style="display:flex; gap:10px; align-items:center; font-weight:900; color:#0b3b3b;">
+                    <input type="checkbox" name="replace_images" value="1">
+                    Заменить картинки (удалить старые)
+                  </label>
+                  <button class="btn primary" type="submit">Сохранить</button>
+                </div>
+              </form>
+            </details>
 
-                        <select name="category_id">
-                            <option value="">(категория не выбрана)</option>
-                            {% for c in categories %}
-                                <option value="{{ c.category_id }}">{{ c.name }}</option>
-                            {% endfor %}
-                        </select>
-
-                        <select name="brand_id">
-                            <option value="">(бренд не выбран)</option>
-                            {% for b in brands %}
-                                <option value="{{ b.id_brand }}">{{ b.name }}</option>
-                            {% endfor %}
-                        </select>
-
-                        <input type="file" name="images" multiple>
-                        <button class="btn primary" type="submit">Добавить товар</button>
-                    </div>
-
-                    <div class="desc-wrap" style="margin-top:12px;">
-                        <textarea name="description" placeholder="Описание (опционально)"></textarea>
-                    </div>
-                </form>
-
-                <table>
-                    <tr>
-                        <th style="width:80px;">ID</th>
-                        <th style="width:90px;">Фото</th>
-                        <th>Название</th>
-                        <th style="width:360px;">Описание</th>
-                        <th style="width:120px;">Цена</th>
-                        <th style="width:140px;">Старая цена</th>
-                        <th style="width:110px;">Кол-во</th>
-                        <th style="width:160px;">Категория</th>
-                        <th style="width:160px;">Бренд</th>
-                        <th style="width:380px;">Действия</th>
-                    </tr>
-
-                    {% for p in products %}
-                    <tr>
-                        <td>{{ p.product_id }}</td>
-                        <td><img class="thumb" src="/product_image/{{ p.product_id }}" alt=""></td>
-                        <td style="font-weight:900;color:#0b3b3b;">{{ p.name }}</td>
-
-                        <td class="desc-cell" title="{{ p.description if p.description else '' }}">
-                            {{ p.description if p.description else "-" }}
-                        </td>
-
-                        <td style="font-weight:900;color:var(--orange);">{{ p.price }}</td>
-                        <td>{{ p.old_price if p.old_price else "-" }}</td>
-                        <td>{{ p.stock_quantity }}</td>
-                        <td>{{ p.category_name if p.category_name else "-" }}</td>
-                        <td>{{ p.brand_name if p.brand_name else "-" }}</td>
-                        <td>
-                            <div class="actions">
-                                <!-- EDIT -->
-                                <details>
-                                    <summary class="btn">Редактировать</summary>
-                                    <form method="POST" enctype="multipart/form-data" class="edit-form">
-                                        <input type="hidden" name="action" value="edit_product">
-                                        <input type="hidden" name="product_id" value="{{ p.product_id }}">
-
-                                        <div class="row">
-                                            <input name="name" value="{{ p.name }}" required>
-                                            <input name="price" value="{{ p.price }}" required>
-                                            <input name="old_price" value="{{ p.old_price if p.old_price else '' }}" placeholder="Старая цена (опц.)">
-                                            <input name="stock" value="{{ p.stock_quantity }}" required>
-
-                                            <select name="category_id">
-                                                <option value="">(категория не выбрана)</option>
-                                                {% for c in categories %}
-                                                    <option value="{{ c.category_id }}" {% if p.category_id == c.category_id %}selected{% endif %}>
-                                                        {{ c.name }}
-                                                    </option>
-                                                {% endfor %}
-                                            </select>
-
-                                            <select name="brand_id">
-                                                <option value="">(бренд не выбран)</option>
-                                                {% for b in brands %}
-                                                    <option value="{{ b.id_brand }}" {% if p.id_brand == b.id_brand %}selected{% endif %}>
-                                                        {{ b.name }}
-                                                    </option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-
-                                        <div class="desc-wrap">
-                                            <textarea name="description" placeholder="Описание (опционально)">{{ p.description if p.description else '' }}</textarea>
-                                        </div>
-
-                                        <div class="row">
-                                            <input type="file" name="images" multiple>
-                                            <label style="display:flex; gap:10px; align-items:center; font-weight:900; color:#0b3b3b;">
-                                                <input type="checkbox" name="replace_images" value="1">
-                                                Заменить картинки (удалить старые)
-                                            </label>
-                                            <button class="btn primary" type="submit">Сохранить</button>
-                                        </div>
-                                    </form>
-                                </details>
-
-                                <!-- DELETE -->
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="delete_product">
-                                    <input type="hidden" name="product_id" value="{{ p.product_id }}">
-                                    <button class="btn primary" type="submit"
-                                        onclick="return confirm('Удалить товар {{ p.name }}? Удалятся и картинки!');"
-                                    >Удалить</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </table>
-            </div>
+            <!-- DELETE -->
+            <form method="POST">
+              <input type="hidden" name="action" value="delete_product">
+              <input type="hidden" name="product_id" value="{{ p.product_id }}">
+              <button class="btn primary" type="submit"
+                      onclick="return confirm('Удалить товар {{ p.name }}? Удалятся и картинки!');">
+                Удалить
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</details>
 
         {% endif %}
     </div>
+<script>
+(function(){
+  function setupDetails(detailsId, btnId){
+    const box = document.getElementById(detailsId);
+    const btn = document.getElementById(btnId);
+    if(!box || !btn) return;
+
+    function sync(){
+      btn.textContent = box.open ? "Свернуть" : "Развернуть";
+    }
+
+    // клик по кнопке — вручную переключаем open
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      box.open = !box.open;
+      sync();
+    });
+
+    // если кликнули по summary (не по кнопке) — тоже синхронизируем текст
+    box.addEventListener("toggle", sync);
+
+    sync();
+  }
+
+  setupDetails("brandsBox", "brandsToggleText");
+  setupDetails("catsBox", "catsToggleText");
+  setupDetails("productsBox", "productsToggleText");
+})();
+</script>
 </body>
 </html>
