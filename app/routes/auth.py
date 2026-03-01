@@ -1434,18 +1434,125 @@ def export_products_excel():
     if not date_from or not date_to:
         return redirect("/admin/reports?rtab=products")
 
+    # 1) данные
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("EXEC dbo.sp_report_sold_products_period ?, ?", date_from, date_to)
     rows = cur.fetchall()
     conn.close()
 
+    # 2) excel
     wb = Workbook()
     ws = wb.active
-    ws.append(["ID", "Товар", "Продано (шт)", "Выручка"])
+    ws.title = "Проданные товары"
 
+    bold = Font(bold=True)
+    bold_big = Font(bold=True, size=14)
+    bold_mid = Font(bold=True, size=12)
+
+    left_wrap = Alignment(wrap_text=True, vertical="top", horizontal="left")
+    center = Alignment(horizontal="center", vertical="center")
+    center_wrap = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    thin = Side(style="thin", color="000000")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    # колонки под таблицу (4 колонки)
+    ws.column_dimensions["A"].width = 38  # Товар
+    ws.column_dimensions["B"].width = 18  # Категория (если есть в rows)
+    ws.column_dimensions["C"].width = 16  # Продано
+    ws.column_dimensions["D"].width = 18  # Выручка
+
+    # --- ЛОГО В A1 ---
+    ws.row_dimensions[1].height = 60
+
+    logo_path = os.path.join(current_app.root_path, "static", "rolmark_logo.png")
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(current_app.root_path, "app", "static", "rolmark_logo.png")
+
+    if os.path.exists(logo_path):
+        img = XLImage(logo_path)
+        img.width = 190
+        img.height = 95
+        ws.add_image(img, "A1")
+    else:
+        ws["A1"] = "ROLMARK"
+        ws["A1"].font = bold_big
+        ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+
+    # --- РЕКВИЗИТЫ В ОДНОЙ ЯЧЕЙКЕ A2 ---
+    requisites = (
+        "Юр.адрес: 220024, Республика Беларусь, г.Минск, ул.Бабушкина, д.4а каб. 33\n"
+        "Салон-офис: 220006, Республика Беларусь, г.Минск, ул.Маяковского, д.26, каб.1 (вход со двора)\n"
+        "Р/с  BY86TECN30121248300010000000 в ОАО «Технобанк», г.Минск, ул.Кропоткина,44 БИК TECNBY22\n"
+        "УНП 190640194\n"
+        "тел./факс: + 375 17 348 99 82\n"
+        "МТС + 375 33 361 65 65, Velcom + 375 29 361 65 65\n"
+        "Наша электронная почта:  rolmark.trade@gmail.com"
+    )
+
+    ws["A3"] = requisites
+    ws["A3"].alignment = left_wrap
+    ws["A3"].font = Font(size=10)
+    ws.merge_cells("A3:D7")          # реквизиты большим блоком
+    ws.row_dimensions[3].height = 18
+    ws.row_dimensions[4].height = 18
+    ws.row_dimensions[5].height = 18
+    ws.row_dimensions[6].height = 18
+    ws.row_dimensions[7].height = 18
+    ws.row_dimensions[8].height = 18
+
+    # --- Заголовок отчёта по центру ---
+    ws["A9"] = "ОТЧЁТ"
+    ws["A9"].font = bold_big
+    ws["A9"].alignment = center
+    ws.merge_cells("A9:D9")
+
+    ws["A10"] = f"по проданным товарам за период {date_from} — {date_to}"
+    ws["A10"].font = bold_mid
+    ws["A10"].alignment = center
+    ws.merge_cells("A10:D10")
+
+    ws["A11"] = f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}"
+    ws["A11"].font = bold
+    ws["A11"].alignment = center
+    ws.merge_cells("A11:D11")
+
+    # --- Таблица (без ID) ---
+    # ВНИМАНИЕ: если ты ДОБАВИЛ категорию в процедуру, она может быть в rows как r.category_name
+    # Если категории пока нет — столбец "Категория" просто заполним "-"
+    table_start = 13
+
+    headers = ["Товар", "Категория", "Продано (шт)", "Выручка"]
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=table_start, column=col, value=h)
+        cell.font = bold
+        cell.alignment = center_wrap
+
+    r_i = table_start + 1
     for r in rows:
-        ws.append([r.product_id, r.name, r.sold_qty, r.revenue])
+        # пытаемся взять категорию, если она есть в результате процедуры
+        cat_val = "-"
+        if hasattr(r, "category_name") and r.category_name is not None:
+            cat_val = str(r.category_name)
+        elif hasattr(r, "category") and r.category is not None:
+            cat_val = str(r.category)
+
+        ws.cell(row=r_i, column=1, value=str(r.name) if r.name is not None else "-").alignment = Alignment(wrap_text=True, vertical="top")
+        ws.cell(row=r_i, column=2, value=cat_val).alignment = Alignment(wrap_text=True, vertical="top")
+        ws.cell(row=r_i, column=3, value=int(r.sold_qty) if r.sold_qty is not None else 0).alignment = center
+        ws.cell(row=r_i, column=4, value=float(r.revenue) if r.revenue is not None else 0.0).alignment = center
+        r_i += 1
+
+    last_row = max(table_start, r_i - 1)
+
+    # границы только на таблицу (шапка+данные)
+    for rr in range(table_start, last_row + 1):
+        for cc in range(1, 5):
+            ws.cell(row=rr, column=cc).border = border
+
+    # закрепим заголовок таблицы
+    ws.freeze_panes = ws["A14"]
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -1462,27 +1569,98 @@ def export_products_word():
     if not date_from or not date_to:
         return redirect("/admin/reports?rtab=products")
 
+    # 1) данные
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("EXEC dbo.sp_report_sold_products_period ?, ?", date_from, date_to)
     rows = cur.fetchall()
     conn.close()
 
+    # 2) документ
     doc = Document()
-    doc.add_heading(f"Отчет по проданным товарам за период {date_from} — {date_to}", level=1)
+    # --- нижний колонтитул ---
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    section = doc.sections[0]
+    footer = section.footer
 
+    # очистим дефолтный пустой абзац, чтобы не было лишних строк
+    if footer.paragraphs:
+        footer.paragraphs[0].text = ""
+
+    p_f = footer.add_paragraph()
+    p_f.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run_f = p_f.add_run(f"Отчет составлен: {now_str}")
+    run_f.bold = True
+    run_f.font.size = Pt(9)
+
+    # --- шапка: лого + реквизиты ---
+    top = doc.add_table(rows=1, cols=2)
+    top.autofit = True
+    left = top.cell(0, 0)
+    right = top.cell(0, 1)
+    right.text = ""
+
+    logo_path = os.path.join(current_app.root_path, "static", "rolmark_logo.png")
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(current_app.root_path, "app", "static", "rolmark_logo.png")
+
+    if os.path.exists(logo_path):
+        p_logo = left.paragraphs[0]
+        p_logo.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = p_logo.add_run()
+        run.add_picture(logo_path, width=Inches(1.6))
+
+    requisites = (
+        "Юр.адрес: 220024, Республика Беларусь, г.Минск, ул.Бабушкина, д.4а каб. 33\n\n"
+        "Салон-офис: 220006, Республика Беларусь, г.Минск, ул.Маяковского, д.26, каб.1 (вход со двора)\n\n"
+        "Р/с BY86TECN30121248300010000000 в ОАО «Технобанк», г.Минск, ул.Кропоткина,44 БИК TECNBY22\n\n"
+        "УНП 190640194\n\n"
+        "тел./факс: +375 17 348 99 82\n\n"
+        "МТС +375 33 361 65 65, Velcom +375 29 361 65 65\n\n"
+        "Наша электронная почта: rolmark.trade@gmail.com"
+    )
+    p_req = left.add_paragraph(requisites)
+    p_req.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    for rr in p_req.runs:
+        rr.font.size = Pt(9)
+
+    doc.add_paragraph("")
+
+    # --- Заголовки по центру ---
+    p1 = doc.add_paragraph("ОТЧЁТ")
+    p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p1.runs[0].bold = True
+    p1.runs[0].font.size = Pt(14)
+
+    p2 = doc.add_paragraph(f"по проданным товарам за период {date_from} — {date_to}")
+    p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p2.runs[0].bold = True
+    p2.runs[0].font.size = Pt(12)
+
+    p3 = doc.add_paragraph()
+    p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run_dt = p3.add_run(f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}")
+    run_dt.bold = True
+    run_dt.font.size = Pt(11)
+
+    doc.add_paragraph("")
+
+    # --- Таблица (БЕЗ ID), с границами ---
     t = doc.add_table(rows=1, cols=4)
-    t.rows[0].cells[0].text = "ID"
-    t.rows[0].cells[1].text = "Товар"
-    t.rows[0].cells[2].text = "Продано (шт)"
-    t.rows[0].cells[3].text = "Выручка"
+    t.style = "Table Grid"
+
+    hdr = t.rows[0].cells
+    hdr[0].text = "Товар"
+    hdr[1].text = "Категория"
+    hdr[2].text = "Продано (шт)"
+    hdr[3].text = "Выручка"
 
     for r in rows:
         c = t.add_row().cells
-        c[0].text = str(r.product_id)
-        c[1].text = str(r.name)
-        c[2].text = str(r.sold_qty)
-        c[3].text = str(r.revenue)
+        c[0].text = str(getattr(r, "name", ""))
+        c[1].text = str(getattr(r, "category_name", ""))  # должно прийти из процедуры
+        c[2].text = str(getattr(r, "sold_qty", 0))
+        c[3].text = str(getattr(r, "revenue", 0))
 
     buf = io.BytesIO()
     doc.save(buf)
