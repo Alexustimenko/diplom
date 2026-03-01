@@ -772,6 +772,20 @@ def export_word():
 
     # 2) документ
     doc = Document()
+    # --- нижний колонтитул ---
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    section = doc.sections[0]
+    footer = section.footer
+
+    # очистим дефолтный пустой абзац, чтобы не было лишних строк
+    if footer.paragraphs:
+        footer.paragraphs[0].text = ""
+
+    p_f = footer.add_paragraph()
+    p_f.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run_f = p_f.add_run(f"Отчет составлен: {now_str}")
+    run_f.bold = True
+    run_f.font.size = Pt(9)
 
     # --- верхний левый блок: лого + реквизиты ---
     top = doc.add_table(rows=1, cols=2)
@@ -1116,6 +1130,20 @@ def export_orders_word():
 
     # 2) документ
     doc = Document()
+    # --- нижний колонтитул ---
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    section = doc.sections[0]
+    footer = section.footer
+
+    # очистим дефолтный пустой абзац, чтобы не было лишних строк
+    if footer.paragraphs:
+        footer.paragraphs[0].text = ""
+
+    p_f = footer.add_paragraph()
+    p_f.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run_f = p_f.add_run(f"Отчет составлен: {now_str}")
+    run_f.bold = True
+    run_f.font.size = Pt(9)
 
     # --- шапка: лого + реквизиты ---
     top = doc.add_table(rows=1, cols=2)
