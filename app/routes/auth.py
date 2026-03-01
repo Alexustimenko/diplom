@@ -918,40 +918,6 @@ def report_products_period():
         date_from=date_from,
         date_to=date_to
     )
-import os
-import io
-from datetime import datetime
-from flask import current_app, send_file, redirect, request
-from openpyxl import Workbook
-from openpyxl.drawing.image import Image as XLImage
-from openpyxl.styles import Font, Alignment
-from openpyxl.utils import get_column_letter
-
-import os
-import io
-from datetime import datetime
-from flask import current_app, send_file, redirect, request
-from openpyxl import Workbook
-from openpyxl.drawing.image import Image as XLImage
-from openpyxl.styles import Font, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-
-import os
-import io
-from datetime import datetime
-from flask import current_app, send_file, redirect, request
-from openpyxl import Workbook
-from openpyxl.drawing.image import Image as XLImage
-from openpyxl.styles import Font, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from datetime import datetime
-import os, io
-from flask import current_app, send_file, redirect
-from openpyxl import Workbook
-from openpyxl.drawing.image import Image as XLImage
-from openpyxl.styles import Font, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-
 @auth_bp.route("/admin/reports/orders/excel")
 def export_orders_excel():
     gate = _require_admin()
@@ -963,127 +929,19 @@ def export_orders_excel():
     if not date_from or not date_to:
         return redirect("/admin/reports?rtab=orders")
 
-    # 1) данные
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("EXEC dbo.sp_report_orders_period_grouped ?, ?", date_from, date_to)
     rows = cur.fetchall()
     conn.close()
 
-    # 2) excel
     wb = Workbook()
     ws = wb.active
-    ws.title = "Orders report"
+    ws.append(["Статус", "Клиент", "Категория", "Заказов", "Позиций", "Сумма"])
 
-    bold = Font(bold=True)
-    bold_big = Font(bold=True, size=14)
-    bold_mid = Font(bold=True, size=12)
-
-    wrap_left = Alignment(wrap_text=True, vertical="top", horizontal="left")
-    center = Alignment(horizontal="center", vertical="center")
-    center_wrap = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-    thin = Side(style="thin", color="000000")
-    border = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-    # ширины колонок (под таблицу)
-    widths = [14, 30, 28, 12, 12, 16]
-    for i, w in enumerate(widths, 1):
-        ws.column_dimensions[get_column_letter(i)].width = w
-
-    # --- ШАПКА: ЛОГО (A1) + РЕКВИЗИТЫ В A2 (ОДНА ЯЧЕЙКА) ---
-    ws.row_dimensions[1].height = 70
-
-    logo_path = os.path.join(current_app.root_path, "static", "rolmark_logo.png")
-    if not os.path.exists(logo_path):
-        logo_path = os.path.join(current_app.root_path, "app", "static", "rolmark_logo.png")
-
-    if os.path.exists(logo_path):
-        img = XLImage(logo_path)
-        img.width = 190
-        img.height = 65
-        ws.add_image(img, "A1")
-    else:
-        ws["A1"] = "ROLMARK-TRADE"
-        ws["A1"].font = bold_big
-        ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
-
-    requisites = (
-        "Юр.адрес: 220024, Республика Беларусь, г.Минск, ул.Бабушкина, д.4а каб. 33\n"
-        "Салон-офис: 220006, Республика Беларусь, г.Минск, ул.Маяковского, д.26, каб.1 (вход со двора)\n"
-        "Р/с  BY86TECN30121248300010000000 в ОАО «Технобанк», г.Минск, ул.Кропоткина,44 БИК TECNBY22\n"
-        "УНП 190640194\n"
-        "тел./факс: + 375 17 348 99 82\n"
-        "МТС + 375 33 361 65 65, Velcom + 375 29 361 65 65\n"
-        "Наша электронная почта:  rolmark.trade@gmail.com"
-    )
-
-    # реквизиты строго в A2 (одна ячейка)
-    ws["A2"] = requisites
-    ws["A2"].font = Font(size=10)
-    ws["A2"].alignment = wrap_left
-
-    # чтобы реквизиты были видны — делаем блок A2:F8 (одна большая ячейка)
-    ws.merge_cells("A2:F8")
-
-    # высоты строк под реквизиты
-    for r in range(2, 9):
-        ws.row_dimensions[r].height = 18
-
-    # рамка вокруг шапки (A1:F8), чтобы выглядело аккуратно
-    #for rr in range(1, 9):
-        #for cc in range(1, 7):
-           # ws.cell(row=rr, column=cc).border = border
-
-    # --- Заголовок отчёта ---
-    title_row = 10
-
-    ws.merge_cells(start_row=title_row, start_column=1, end_row=title_row, end_column=6)
-    c1 = ws.cell(row=title_row, column=1)
-    c1.value = "ОТЧЁТ"
-    c1.font = bold_big
-    c1.alignment = center
-
-    ws.merge_cells(start_row=title_row + 1, start_column=1, end_row=title_row + 1, end_column=6)
-    c2 = ws.cell(row=title_row + 1, column=1)
-    c2.value = f"по заказам за период {date_from} — {date_to}"
-    c2.font = bold_mid
-    c2.alignment = center
-
-    ws.merge_cells(start_row=title_row + 2, start_column=1, end_row=title_row + 2, end_column=6)
-    c3 = ws.cell(row=title_row + 2, column=1)
-    c3.value = f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}"
-    c3.font = bold
-    c3.alignment = center
-
-    # --- Таблица ---
-    table_start = title_row + 4
-    headers = ["Статус", "Клиент", "Категория", "Заказов", "Позиций", "Сумма"]
-
-    for col, h in enumerate(headers, 1):
-        cell = ws.cell(row=table_start, column=col, value=h)
-        cell.font = bold
-        cell.alignment = center_wrap
-        cell.border = border
-
-    r_i = table_start + 1
     for r in rows:
-        ws.cell(row=r_i, column=1, value=str(r.status) if r.status is not None else "")
-        ws.cell(row=r_i, column=2, value=str(r.client_email) if r.client_email is not None else "")
-        ws.cell(row=r_i, column=3, value=str(r.category_name) if r.category_name is not None else "")
-        ws.cell(row=r_i, column=4, value=int(r.orders_count) if r.orders_count is not None else 0)
-        ws.cell(row=r_i, column=5, value=int(r.items_count) if r.items_count is not None else 0)
-        ws.cell(row=r_i, column=6, value=float(r.total_sum) if r.total_sum is not None else 0.0)
+        ws.append([r.status, r.client_email, r.category_name, r.orders_count, r.items_count, r.total_sum])
 
-        for col in range(1, 7):
-            ws.cell(row=r_i, column=col).alignment = Alignment(vertical="top", wrap_text=True)
-            ws.cell(row=r_i, column=col).border = border
-
-        r_i += 1
-
-    ws.freeze_panes = ws[f"A{table_start+1}"]
-
-    # сохранить и отдать
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
