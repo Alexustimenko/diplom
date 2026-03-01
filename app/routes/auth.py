@@ -1681,6 +1681,7 @@ def export_parts_excel():
 
     bval = int(brand_id) if brand_id.isdigit() else None
 
+    # 1) данные
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
@@ -1690,13 +1691,118 @@ def export_parts_excel():
     rows = cur.fetchall()
     conn.close()
 
+    # 2) excel
     wb = Workbook()
     ws = wb.active
-    ws.append(["PartID", "Запчасть", "Бренд", "Категория запчасти", "Цена", "Остаток"])
+    ws.title = "Parts report"
 
+    bold = Font(bold=True)
+    bold_big = Font(bold=True, size=14)
+    bold_mid = Font(bold=True, size=12)
+
+    left_wrap = Alignment(wrap_text=True, vertical="top", horizontal="left")
+    center = Alignment(horizontal="center", vertical="center")
+    center_wrap = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    thin = Side(style="thin", color="000000")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    # сделаем ширину под “шапку”
+    ws.column_dimensions["A"].width = 22   # под лого
+    ws.column_dimensions["B"].width = 95   # под реквизиты/текст (будем мерджить A3:F6, но ширина B поможет)
+
+    # --- ЛОГО в A1 ---
+    ws.row_dimensions[1].height = 55
+
+    logo_path = os.path.join(current_app.root_path, "static", "rolmark_logo.png")
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(current_app.root_path, "app", "static", "rolmark_logo.png")
+
+    if os.path.exists(logo_path):
+        img = XLImage(logo_path)
+        img.width = 190
+        img.height = 95
+        ws.add_image(img, "A1")
+    else:
+        ws["A1"] = "ROLMARK"
+        ws["A1"].font = bold_big
+        ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+
+    # --- Реквизиты в A3 (одна ячейка), как ты просил ---
+    requisites = (
+        "Юр.адрес: 220024, Республика Беларусь, г.Минск, ул.Бабушкина, д.4а каб. 33\n"
+        "Салон-офис: 220006, Республика Беларусь, г.Минск, ул.Маяковского, д.26, каб.1 (вход со двора)\n"
+        "Р/с  BY86TECN30121248300010000000 в ОАО «Технобанк», г.Минск, ул.Кропоткина,44 БИК TECNBY22\n"
+        "УНП 190640194\n"
+        "тел./факс: + 375 17 348 99 82\n"
+        "МТС + 375 33 361 65 65, Velcom + 375 29 361 65 65\n"
+        "Наша электронная почта:  rolmark.trade@gmail.com"
+    )
+
+    # чтобы реквизиты “смотрелись” и не упирались — дадим место
+    ws.merge_cells("A3:F6")
+    ws["A3"] = requisites
+    ws["A3"].font = Font(size=10)
+    ws["A3"].alignment = left_wrap
+    ws.row_dimensions[3].height = 18
+    ws.row_dimensions[4].height = 18
+    ws.row_dimensions[5].height = 18
+    ws.row_dimensions[6].height = 18
+
+    # --- Заголовок по центру ---
+    ws.merge_cells("A8:F8")
+    ws["A8"] = "ОТЧЁТ"
+    ws["A8"].font = bold_big
+    ws["A8"].alignment = center
+
+    ws.merge_cells("A9:F9")
+    ws["A9"] = "по комплектации товаров (запчасти по бренду)"
+    ws["A9"].font = bold_mid
+    ws["A9"].alignment = center
+
+    ws.merge_cells("A10:F10")
+    ws["A10"] = f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}"
+    ws["A10"].font = bold
+    ws["A10"].alignment = center
+
+    # --- Таблица (БЕЗ ID) ---
+    table_start = 12
+    headers = ["Запчасть", "Бренд", "Категория запчасти", "Цена", "Остаток"]
+
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=table_start, column=col)
+        cell.value = h
+        cell.font = bold
+        cell.alignment = center_wrap
+
+    r_i = table_start + 1
     for r in rows:
-        ws.append([r.part_id, r.part_name, r.brand_name, r.part_category, r.price, r.stock_quantity])
+        ws.cell(row=r_i, column=1).value = r.part_name
+        ws.cell(row=r_i, column=2).value = r.brand_name
+        ws.cell(row=r_i, column=3).value = r.part_category
+        ws.cell(row=r_i, column=4).value = float(r.price) if r.price is not None else 0.0
+        ws.cell(row=r_i, column=5).value = int(r.stock_quantity) if r.stock_quantity is not None else 0
 
+        for col in range(1, 6):
+            ws.cell(row=r_i, column=col).alignment = Alignment(vertical="top", wrap_text=True)
+        r_i += 1
+
+    last_row = r_i - 1
+
+    # границы только у таблицы (шапку с лого/реквизитами НЕ трогаем)
+    for row in range(table_start, last_row + 1):
+        for col in range(1, 6):
+            ws.cell(row=row, column=col).border = border
+
+    # ширины колонок таблицы
+    widths = [34, 18, 30, 14, 12]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    # закрепим шапку таблицы
+    ws.freeze_panes = ws["A13"]
+
+    # 3) отдать файл
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
@@ -1716,6 +1822,7 @@ def export_parts_word():
 
     bval = int(brand_id) if brand_id.isdigit() else None
 
+    # 1) данные
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
@@ -1725,26 +1832,94 @@ def export_parts_word():
     rows = cur.fetchall()
     conn.close()
 
+    # 2) документ
     doc = Document()
-    doc.add_heading("Отчет по комплектации товаров (запчасти по бренду)", level=1)
 
-    t = doc.add_table(rows=1, cols=6)
-    t.rows[0].cells[0].text = "PartID"
-    t.rows[0].cells[1].text = "Запчасть"
-    t.rows[0].cells[2].text = "Бренд"
-    t.rows[0].cells[3].text = "Категория запчасти"
-    t.rows[0].cells[4].text = "Цена"
-    t.rows[0].cells[5].text = "Остаток"
+    # --- верхний левый блок: лого + реквизиты ---
+    top = doc.add_table(rows=1, cols=2)
+    top.autofit = True
+    left = top.cell(0, 0)
+    right = top.cell(0, 1)
+    right.text = ""
+
+    # лого (ищем в /static и /app/static)
+    logo_path = os.path.join(current_app.root_path, "static", "rolmark_logo.png")
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(current_app.root_path, "app", "static", "rolmark_logo.png")
+
+    if os.path.exists(logo_path):
+        p_logo = left.paragraphs[0]
+        p_logo.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = p_logo.add_run()
+        run.add_picture(logo_path, width=Inches(1.6))
+    else:
+        p_logo = left.paragraphs[0]
+        p_logo.add_run("ROLMARK").bold = True
+
+    requisites = (
+        "Юр.адрес: 220024, Республика Беларусь, г.Минск, ул.Бабушкина, д.4а каб. 33\n"
+        "Салон-офис: 220006, Республика Беларусь, г.Минск, ул.Маяковского, д.26, каб.1 (вход со двора)\n"
+        "Р/с  BY86TECN30121248300010000000 в ОАО «Технобанк», г.Минск, ул.Кропоткина,44 БИК TECNBY22\n"
+        "УНП 190640194\n"
+        "тел./факс: + 375 17 348 99 82\n"
+        "МТС + 375 33 361 65 65, Velcom + 375 29 361 65 65\n"
+        "Наша электронная почта:  rolmark.trade@gmail.com"
+    )
+    p_req = left.add_paragraph(requisites)
+    p_req.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    for rr in p_req.runs:
+        rr.font.size = Pt(9)
+
+    doc.add_paragraph("")
+
+    # --- Заголовок по центру ---
+    p1 = doc.add_paragraph("ОТЧЁТ")
+    p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p1.runs[0].bold = True
+    p1.runs[0].font.size = Pt(14)
+
+    p2 = doc.add_paragraph("по комплектации товаров (запчасти по бренду)")
+    p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p2.runs[0].bold = True
+    p2.runs[0].font.size = Pt(12)
+
+    p3 = doc.add_paragraph()
+    p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run_dt = p3.add_run(f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}")
+    run_dt.bold = True
+    run_dt.font.size = Pt(11)
+
+    doc.add_paragraph("")
+
+    # --- Таблица: БЕЗ ID, с границами ---
+    t = doc.add_table(rows=1, cols=5)
+    t.style = "Table Grid"
+
+    hdr = t.rows[0].cells
+    hdr[0].text = "Запчасть"
+    hdr[1].text = "Бренд"
+    hdr[2].text = "Категория запчасти"
+    hdr[3].text = "Цена"
+    hdr[4].text = "Остаток"
 
     for r in rows:
         c = t.add_row().cells
-        c[0].text = str(r.part_id)
-        c[1].text = str(r.part_name)
-        c[2].text = str(r.brand_name)
-        c[3].text = str(r.part_category)
-        c[4].text = str(r.price)
-        c[5].text = str(r.stock_quantity)
+        c[0].text = str(r.part_name)
+        c[1].text = str(r.brand_name)
+        c[2].text = str(r.part_category)
+        c[3].text = str(r.price)
+        c[4].text = str(r.stock_quantity)
 
+    # --- Нижний колонтитул ---
+    section = doc.sections[0]
+    footer = section.footer
+    fp = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+    fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    fr = fp.add_run(f"Отчет составлен на: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    fr.font.size = Pt(9)
+    fr.bold = True
+
+    # 3) отдаём файл
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
