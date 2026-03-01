@@ -1206,18 +1206,112 @@ def export_clients_excel():
     if gate:
         return gate
 
+    # 1) данные
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("EXEC dbo.sp_report_clients_orders")
     rows = cur.fetchall()
     conn.close()
 
+    # 2) excel
     wb = Workbook()
     ws = wb.active
-    ws.append(["User ID", "Email", "Заказов", "Потрачено", "Первый заказ", "Последний заказ"])
+    ws.title = "Клиенты"
 
+    bold = Font(bold=True)
+    bold_big = Font(bold=True, size=14)
+    bold_mid = Font(bold=True, size=12)
+
+    wrap_left = Alignment(wrap_text=True, vertical="top", horizontal="left")
+    center = Alignment(horizontal="center", vertical="center")
+    center_wrap = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    thin = Side(style="thin", color="000000")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    # --- ЛОГО (A1) ---
+    ws.merge_cells("A1:E1")
+    ws.row_dimensions[1].height = 60
+
+    logo_path = os.path.join(current_app.root_path, "static", "rolmark_logo.png")
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(current_app.root_path, "app", "static", "rolmark_logo.png")
+
+    if os.path.exists(logo_path):
+        img = XLImage(logo_path)
+        img.width = 170
+        img.height = 55
+        ws.add_image(img, "A1")
+    else:
+        ws["A1"] = "ROLMARK"
+        ws["A1"].font = bold_big
+        ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+
+    # --- РЕКВИЗИТЫ В ОДНОЙ ЯЧЕЙКЕ A2 ---
+    requisites = (
+        "Юр.адрес: 220024, Республика Беларусь, г.Минск, ул.Бабушкина, д.4а каб. 33\n"
+        "Салон-офис: 220006, Республика Беларусь, г.Минск, ул.Маяковского, д.26, каб.1 (вход со двора)\n"
+        "Р/с BY86TECN30121248300010000000 в ОАО «Технобанк», г.Минск, ул.Кропоткина,44 БИК TECNBY22\n"
+        "УНП 190640194\n"
+        "тел./факс: +375 17 348 99 82\n"
+        "МТС +375 33 361 65 65, Velcom +375 29 361 65 65\n"
+        "Наша электронная почта: rolmark.trade@gmail.com"
+    )
+    ws["A2"] = requisites
+    ws["A2"].font = Font(size=9)
+    ws["A2"].alignment = wrap_left
+    ws.merge_cells("A2:E6")
+
+    # --- ЗАГОЛОВОК ---
+    ws["A7"] = "ОТЧЁТ"
+    ws["A7"].font = bold_big
+    ws["A7"].alignment = center
+    ws.merge_cells("A7:E7")
+
+    ws["A8"] = "по клиентам (история заказов)"
+    ws["A8"].font = bold_mid
+    ws["A8"].alignment = center
+    ws.merge_cells("A8:E8")
+
+    ws["A9"] = f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}"
+    ws["A9"].font = bold
+    ws["A9"].alignment = center
+    ws.merge_cells("A9:E9")
+
+    # --- ТАБЛИЦА (БЕЗ User ID) ---
+    table_start = 11
+    headers = ["Email", "Заказов", "Потрачено", "Первый заказ", "Последний заказ"]
+
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=table_start, column=col, value=h)
+        cell.font = bold
+        cell.alignment = center_wrap
+
+    r_i = table_start + 1
     for r in rows:
-        ws.append([r.user_id, r.email, r.orders_count, r.total_spent, r.first_order, r.last_order])
+        ws.cell(row=r_i, column=1, value=str(r.email))
+        ws.cell(row=r_i, column=2, value=int(r.orders_count) if r.orders_count is not None else 0)
+        ws.cell(row=r_i, column=3, value=float(r.total_spent) if r.total_spent is not None else 0.0)
+        ws.cell(row=r_i, column=4, value=str(r.first_order) if r.first_order else "Клиент ничего не покупал")
+        ws.cell(row=r_i, column=5, value=str(r.last_order) if r.last_order else "Клиент ничего не покупал")
+
+        for col in range(1, 6):
+            ws.cell(row=r_i, column=col).alignment = Alignment(vertical="top", wrap_text=True)
+        r_i += 1
+
+    last_row = r_i - 1
+
+    # границы только у таблицы (шапку/реквизиты не трогаем)
+    for rr in range(table_start, last_row + 1):
+        for cc in range(1, 6):
+            ws.cell(row=rr, column=cc).border = border
+
+    # ширины колонок
+    widths = [32, 12, 14, 18, 18]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    ws.freeze_panes = ws["A12"]
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -1229,32 +1323,102 @@ def export_clients_word():
     if gate:
         return gate
 
+    # 1) данные
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("EXEC dbo.sp_report_clients_orders")
     rows = cur.fetchall()
     conn.close()
 
+    # 2) документ
     doc = Document()
-    doc.add_heading("Отчет по клиентам (история заказов)", level=1)
 
-    t = doc.add_table(rows=1, cols=6)
-    t.rows[0].cells[0].text = "User ID"
-    t.rows[0].cells[1].text = "Email"
-    t.rows[0].cells[2].text = "Заказов"
-    t.rows[0].cells[3].text = "Потрачено"
-    t.rows[0].cells[4].text = "Первый заказ"
-    t.rows[0].cells[5].text = "Последний заказ"
+    # --- нижний колонтитул: "отчет составлен на ..." ---
+    now = datetime.now()
+    footer = doc.sections[0].footer
+    fp = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+    fp.text = f"Отчет составлен на {now.strftime('%d.%m.%Y %H:%M')}"
+    fp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    for run in fp.runs:
+        run.font.size = Pt(9)
+
+    # --- верхний левый блок: лого + реквизиты ---
+    top = doc.add_table(rows=1, cols=2)
+    top.autofit = True
+
+    left = top.cell(0, 0)
+    right = top.cell(0, 1)
+    right.text = ""
+
+    # ищем лого в static
+    logo_path = os.path.join(current_app.root_path, "static", "rolmark_logo.png")
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(current_app.root_path, "app", "static", "rolmark_logo.png")
+
+    if os.path.exists(logo_path):
+        p_logo = left.paragraphs[0]
+        p_logo.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = p_logo.add_run()
+        run.add_picture(logo_path, width=Inches(1.6))
+
+    requisites = (
+        "Юр.адрес: 220024, Республика Беларусь, г.Минск, ул.Бабушкина, д.4а каб. 33\n\n"
+        "Салон-офис: 220006, Республика Беларусь, г.Минск, ул.Маяковского, д.26, каб.1 (вход со двора)\n\n"
+        "Р/с BY86TECN30121248300010000000 в ОАО «Технобанк», г.Минск, ул.Кропоткина,44 БИК TECNBY22\n\n"
+        "УНП 190640194\n\n"
+        "тел./факс: +375 17 348 99 82\n\n"
+        "МТС +375 33 361 65 65, Velcom +375 29 361 65 65\n\n"
+        "Наша электронная почта: rolmark.trade@gmail.com"
+    )
+
+    p_req = left.add_paragraph(requisites)
+    p_req.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    for run in p_req.runs:
+        run.font.size = Pt(9)
+
+    doc.add_paragraph("")
+
+    # --- Заголовок по центру ---
+    p1 = doc.add_paragraph("ОТЧЁТ")
+    p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r1 = p1.runs[0]
+    r1.bold = True
+    r1.font.size = Pt(14)
+
+    p2 = doc.add_paragraph("по клиентам (история заказов)")
+    p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r2 = p2.runs[0]
+    r2.bold = True
+    r2.font.size = Pt(12)
+
+    p3 = doc.add_paragraph()
+    p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r3 = p3.add_run(f"По состоянию на: {now.strftime('%d.%m.%Y')}")
+    r3.bold = True
+    r3.font.size = Pt(11)
+
+    doc.add_paragraph("")
+
+    # --- Таблица с границами ---
+    # (оставляем 6 колонок как у тебя)
+    t = doc.add_table(rows=1, cols=5)
+    t.style = "Table Grid"
+
+    hdr = t.rows[0].cells
+    hdr[0].text = "Email"
+    hdr[1].text = "Заказов"
+    hdr[2].text = "Потрачено"
+    hdr[3].text = "Первый заказ"
+    hdr[4].text = "Последний заказ"
 
     for r in rows:
         c = t.add_row().cells
-        c[0].text = str(r.user_id)
-        c[1].text = str(r.email)
-        c[2].text = str(r.orders_count)
-        c[3].text = str(r.total_spent)
-        c[4].text = str(r.first_order) if r.first_order else "-"
-        c[5].text = str(r.last_order) if r.last_order else "-"
-
+        c[0].text = str(r.email)
+        c[1].text = str(r.orders_count)
+        c[2].text = str(r.total_spent)
+        c[3].text = str(r.first_order) if r.first_order else "Клиент ничего не покупал"
+        c[4].text = str(r.last_order) if r.last_order else "Клиент ничего не покупал"
+    # 3) отдаём файл
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
