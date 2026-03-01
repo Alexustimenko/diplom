@@ -946,6 +946,14 @@ def export_orders_excel():
     wb.save(buf)
     buf.seek(0)
     return send_file(buf, as_attachment=True, download_name="orders_report.xlsx")
+import os
+import io
+from datetime import datetime
+from flask import current_app, send_file, redirect, request
+from docx import Document
+from docx.shared import Inches, Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+
 @auth_bp.route("/admin/reports/orders/word")
 def export_orders_word():
     gate = _require_admin()
@@ -957,22 +965,84 @@ def export_orders_word():
     if not date_from or not date_to:
         return redirect("/admin/reports?rtab=orders")
 
+    # 1) данные
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("EXEC dbo.sp_report_orders_period_grouped ?, ?", date_from, date_to)
     rows = cur.fetchall()
     conn.close()
 
+    # 2) документ
     doc = Document()
-    doc.add_heading(f"Отчет по заказам за период {date_from} — {date_to}", level=1)
 
+    # --- шапка: лого + реквизиты ---
+    top = doc.add_table(rows=1, cols=2)
+    top.autofit = True
+
+    left = top.cell(0, 0)
+    right = top.cell(0, 1)
+    right.text = ""
+
+    # путь к лого (попробуем 2 варианта как раньше)
+    logo_path = os.path.join(current_app.root_path, "static", "rolmark_logo.png")
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(current_app.root_path, "app", "static", "rolmark_logo.png")
+
+    if os.path.exists(logo_path):
+        p_logo = left.paragraphs[0]
+        p_logo.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = p_logo.add_run()
+        run.add_picture(logo_path, width=Inches(1.6))
+
+    requisites = (
+        "Юр.адрес: 220024, Республика Беларусь, г.Минск, ул.Бабушкина, д.4а каб. 33\n\n"
+        "Салон-офис: 220006, Республика Беларусь, г.Минск, ул.Маяковского, д.26, каб.1 (вход со двора)\n\n"
+        "Р/с BY86TECN30121248300010000000 в ОАО «Технобанк», г.Минск, ул.Кропоткина,44 БИК TECNBY22\n\n"
+        "УНП 190640194\n\n"
+        "тел./факс: + 375 17 348 99 82\n\n"
+        "МТС + 375 33 361 65 65, Velcom + 375 29 361 65 65\n\n"
+        "Наша электронная почта:  rolmark.trade@gmail.com"
+    )
+
+    p_req = left.add_paragraph(requisites)
+    p_req.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    for r in p_req.runs:
+        r.font.size = Pt(9)
+
+    doc.add_paragraph("")
+
+    # --- заголовки по центру ---
+    p1 = doc.add_paragraph("ОТЧЁТ")
+    p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r1 = p1.runs[0]
+    r1.bold = True
+    r1.font.size = Pt(14)
+
+    p2 = doc.add_paragraph(f"по заказам за период {date_from} — {date_to}")
+    p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r2 = p2.runs[0]
+    r2.bold = True
+    r2.font.size = Pt(12)
+
+    p_date = doc.add_paragraph()
+    p_date.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    rdate = p_date.add_run(f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}")
+    rdate.bold = True
+    rdate.font.size = Pt(11)
+
+    doc.add_paragraph("")
+
+    # --- таблица с границами ---
     t = doc.add_table(rows=1, cols=6)
-    t.rows[0].cells[0].text = "Статус"
-    t.rows[0].cells[1].text = "Клиент"
-    t.rows[0].cells[2].text = "Категория"
-    t.rows[0].cells[3].text = "Заказов"
-    t.rows[0].cells[4].text = "Позиций"
-    t.rows[0].cells[5].text = "Сумма"
+    t.style = "Table Grid"
+
+    hdr = t.rows[0].cells
+    hdr[0].text = "Статус"
+    hdr[1].text = "Клиент"
+    hdr[2].text = "Категория"
+    hdr[3].text = "Заказов"
+    hdr[4].text = "Позиций"
+    hdr[5].text = "Сумма"
 
     for r in rows:
         c = t.add_row().cells
@@ -983,6 +1053,7 @@ def export_orders_word():
         c[4].text = str(r.items_count)
         c[5].text = str(r.total_sum)
 
+    # 3) отдаём
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
