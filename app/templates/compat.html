@@ -4,20 +4,20 @@
   <meta charset="utf-8" />
   <title>Совместимость запчастей</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 18px; background:#f7fbfb; }
+    body { font-family: Arial, sans-serif; padding: 18px; background:#BBC3C6; }
     .box { max-width: 1180px; margin: 0 auto; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
     .field { flex:1; min-width: 280px; }
-    label { font-weight: 800; display:block; margin-bottom:6px; color:#0b3b3b; }
+    label { font-weight: 800; display:block; margin-bottom:6px; color:##5D535E; }
     input {
-      width:100%; padding:10px; border:2px solid #33CCCC; border-radius:10px; box-sizing:border-box;
+      width:100%; padding:10px; border:2px solid #5D535E; border-radius:10px; box-sizing:border-box;
     }
     button {
-      padding:10px 14px; border-radius:10px; border:0; background:#FF7400; color:white;
+      padding:10px 14px; border-radius:10px; border:0; background:##5D535E; color:white;
       font-weight:900; cursor:pointer;
     }
     .btn-lite{
-      background:white; color:#0b3b3b; border:2px solid #33CCCC;
+      background:white; color:#0b3b3b; border:2px solid #5D535E;
     }
     .hint { color:#2b6666; font-weight:700; margin-top:10px; }
 
@@ -47,7 +47,7 @@
     }
     .chip{
       display:inline-flex; align-items:center; gap:8px;
-      background:#eefafa; border:2px solid #33CCCC; border-radius:999px;
+      background:#eefafa; border:2px solid #5D535E; border-radius:999px;
       padding:6px 10px; font-weight:800; color:#0b3b3b;
     }
     .chip button{
@@ -123,7 +123,7 @@
     </div>
 
     <div style="padding-top:28px; display:flex; gap:8px; flex-wrap:wrap;">
-      <button id="checkBtn">Проверить</button>
+      <button id="checkBtn" class="btn-lite">Проверить</button>
       <button id="clearPartsBtn" type="button" class="btn-lite">Очистить запчасти</button>
     </div>
   </div>
