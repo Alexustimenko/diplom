@@ -101,9 +101,74 @@
       .matrix { grid-template-columns: 1fr; }
       .cards { grid-template-columns: 1fr; }
     }
-  </style>
+
+  :root{ --orange:#5D535E; --cyan:#BBC3C6; }
+
+/* важно: без padding у body, чтобы topbar был во всю ширину */
+body{
+  font-family: Arial, sans-serif;
+  margin:0;
+  padding:0;
+  background: var(--cyan);
+}
+
+.topbar{
+  background:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 6px 16px rgba(0,0,0,0.15);
+}
+
+.logo{
+  font-weight:900;
+  color:var(--orange);
+  letter-spacing:.06em;
+  font-size:22px;
+}
+
+.btn{
+  display:inline-block;
+  padding:10px 14px;
+  border-radius:10px;
+  border:2px solid var(--cyan);
+  background:white;
+  color:#0b3b3b;
+  font-weight:900;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+.btn.primary{
+  background:var(--orange);
+  border-color:var(--orange);
+  color:white;
+}
+
+.btn:hover{ opacity:0.92; }
+
+/* ✅ чтобы контент не прилипал к шапке + были “старые” отступы */
+.box{
+  max-width: 980px;
+  margin: 18px auto;     /* отступ сверху/снизу и центрирование */
+  padding: 18px;         /* внутренние отступы как раньше */
+  background: transparent;
+}
+</style>
 </head>
 <body>
+<div class="topbar">
+  <div class="logo">СОВМЕСТИМОСТЬ</div>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    <a class="btn" href="/">Каталог</a>
+
+    {% if session.get("is_admin") == 1 %}
+      <a class="btn primary" href="/admin">Админка</a>
+    {% endif %}
+  </div>
+</div>
 <div class="box">
   <h2>Узнай, подходит ли запчасть</h2>
 
@@ -116,7 +181,7 @@
     </div>
 
     <div class="field dropdown">
-      <label>Запчасть (можно добавить несколько):</label>
+      <label>Запчасть:</label>
       <input id="partInput" placeholder="Начни вводить запчасть..." autocomplete="off">
       <div id="partList" class="list"></div>
       <div class="muted" style="margin-top:6px;">Каждый клик по подсказке добавляет запчасть в список</div>
