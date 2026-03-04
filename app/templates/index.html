@@ -167,6 +167,10 @@
         {% if session.get("user_id") %}
             <span style="font-weight:900;color:#0b3b3b;">{{ session.get("email") }}</span>
 
+            <!-- ✅ новые кнопки -->
+            <a class="btn" href="/smart">Подобрать товар</a>
+            <a class="btn" href="/compat">Проверить совместимость</a>
+
             <a class="btn" href="/cart">Корзина</a>
 
             {% if session.get("is_admin") == 1 %}
@@ -181,7 +185,6 @@
         {% endif %}
     </div>
 </div>
-
 <div class="wrap">
 
     <div class="hero">
