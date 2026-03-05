@@ -361,7 +361,7 @@ def admin():
 
             elif action == "edit_brand":
                 cur.execute(
-                    "EXEC dbo.sp_edit_brand ?, ?",
+                    "EXEC dbo.sp_update_brand ?, ?",
                     int(request.form["brand_id"]),
                     request.form["brand_name"]
                 )
