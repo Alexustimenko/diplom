@@ -387,14 +387,14 @@
   const input = document.getElementById("searchInput");
   let t = null;
 
-  function goServerSearch(){
-    const q = (input.value || "").trim();
-    const url = new URL(window.location.href);
-    if(q) url.searchParams.set("q", q);
-    else url.searchParams.delete("q");
-    url.searchParams.set("page", "1");     // при новом поиске всегда на 1 страницу
-    window.location.href = url.toString();
-  }
+function goServerSearch(){
+  const q = (input.value || "");   // ✅ без trim
+  const url = new URL(window.location.href);
+  if(q) url.searchParams.set("q", q);
+  else url.searchParams.delete("q");
+  url.searchParams.set("page", "1");
+  window.location.href = url.toString();
+}
 
   if(input){
     input.addEventListener("input", () => {

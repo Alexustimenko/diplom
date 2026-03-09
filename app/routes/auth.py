@@ -6,8 +6,57 @@ import io
 from docx import Document
 from openpyxl import Workbook
 from datetime import datetime
+import re
 
 auth_bp = Blueprint("auth", __name__)
+EMAIL_ALLOWED_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+def is_valid_email_strict(email: str) -> bool:
+    if not email or len(email) > 254:
+        return False
+
+    email = email.strip()
+
+    # Быстрый фильтр по допустимым символам и базовой структуре
+    if not EMAIL_ALLOWED_RE.match(email):
+        return False
+
+    if email.count("@") != 1:
+        return False
+
+    local, domain = email.split("@", 1)
+
+    # local part правила
+    if len(local) > 64:
+        return False
+    if local[0] == "." or local[-1] == ".":
+        return False
+    if ".." in local:
+        return False
+
+    # domain правила
+    if domain[0] == "." or domain[-1] == ".":
+        return False
+    if ".." in domain:
+        return False
+    if "." not in domain:
+        return False
+
+    labels = domain.split(".")
+    if any(not lbl for lbl in labels):
+        return False
+
+    tld = labels[-1]
+    if len(tld) < 2 or not tld.isalpha():
+        return False
+
+    for lbl in labels:
+        if len(lbl) > 63:
+            return False
+        if lbl[0] == "-" or lbl[-1] == "-":
+            return False
+
+    return True
 
 def _require_admin():
     if "user_id" not in session:
@@ -26,7 +75,8 @@ def _require_login():
 
 @auth_bp.route("/")
 def index():
-    q = request.args.get("q", "").strip()
+    q_raw = request.args.get("q", "")        # ✅ НЕ strip — чтобы пробел не исчезал из инпута
+    q = q_raw.strip()                         # ✅ для SQL-поиска можно trim
 
     # фильтры
     category_id_raw = request.args.get("category_id", "").strip()
@@ -37,7 +87,7 @@ def index():
     price_to_raw = request.args.get("price_to", "").strip()
 
     # пагинация
-    per_page = 2
+    per_page = 3
     try:
         page = int(request.args.get("page", "1"))
     except:
@@ -84,7 +134,6 @@ def index():
     for rid in parts_roots:
         parts_tree |= collect_descendants(rid)
 
-    # выбранная категория/бренд
     selected_category_id = int(category_id_raw) if category_id_raw.isdigit() else None
     selected_brand_id = int(brand_id_raw) if brand_id_raw.isdigit() else None
 
@@ -131,12 +180,10 @@ def index():
 
     # ✅ доп. фильтры только если НЕ запчасти
     if not is_parts_mode:
-        # бренд
         if selected_brand_id:
             where.append("id_brand = ?")
             params.append(selected_brand_id)
 
-        # цвет/материал из description по шаблону "Цвет: ..." и "Материал: ..."
         if color_raw:
             c = color_raw.strip().lower()
             where.append("LOWER(ISNULL(description,'')) LIKE ?")
@@ -174,7 +221,9 @@ def index():
     return render_template(
         "index.html",
         products=products,
-        q=q,
+
+        q=q_raw,   # ✅ ВАЖНО: в шаблон отдаём q_raw, чтобы пробелы не исчезали
+
         page=page,
         total_pages=total_pages,
 
@@ -255,7 +304,10 @@ def image_by_id(image_id):
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        email = request.form.get("email", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        if not is_valid_email_strict(email):
+            return render_template("register.html", error="Введите корректный email (пример: name@gmail.com)")
+
         password = request.form.get("password", "")
         customer_type = request.form.get("customer_type", "fiz").strip()
 
@@ -355,44 +407,131 @@ def admin():
             # ---------- BRANDS ----------
             if action == "add_brand":
                 name = request.form.get("brand_name", "").strip()
-                cur.execute("EXEC dbo.sp_add_brand ?", name)
-                conn.commit()
-                success = "Бренд добавлен"
+                if not name:
+                    error = "Название бренда обязательно"
+                else:
+                    # ✅ проверка дубля бренда по имени (без регистра и пробелов)
+                    cur.execute("""
+                        SELECT TOP 1 id_brand
+                        FROM dbo.brand
+                        WHERE LTRIM(RTRIM(LOWER(name))) = LTRIM(RTRIM(LOWER(?)))
+                    """, name)
+                    exists_row = cur.fetchone()
+
+                    if exists_row:
+                        error = f"Бренд с названием '{name}' уже существует"
+                    else:
+                        cur.execute("EXEC dbo.sp_add_brand ?", name)
+                        conn.commit()
+                        success = "Бренд добавлен"
 
             elif action == "edit_brand":
-                cur.execute(
-                    "EXEC dbo.sp_update_brand ?, ?",
-                    int(request.form["brand_id"]),
-                    request.form["brand_name"]
-                )
-                conn.commit()
-                success = "Бренд обновлён"
+                brand_id = int(request.form["brand_id"])
+                name = request.form.get("brand_name", "").strip()
+                if not name:
+                    error = "Название бренда обязательно"
+                else:
+                    # ✅ дубль имени бренда, но исключаем текущий brand_id
+                    cur.execute("""
+                        SELECT TOP 1 id_brand
+                        FROM dbo.brand
+                        WHERE LTRIM(RTRIM(LOWER(name))) = LTRIM(RTRIM(LOWER(?)))
+                          AND id_brand <> ?
+                    """, name, brand_id)
+                    exists_row = cur.fetchone()
+
+                    if exists_row:
+                        error = f"Бренд с названием '{name}' уже существует"
+                    else:
+                        cur.execute("EXEC dbo.sp_update_brand ?, ?", brand_id, name)
+                        conn.commit()
+                        success = "Бренд обновлён"
 
             elif action == "delete_brand":
-                cur.execute("EXEC dbo.sp_delete_brand ?", int(request.form["brand_id"]))
-                conn.commit()
-                success = "Бренд удалён"
+                bid = int(request.form["brand_id"])
+
+                # ✅ нельзя удалить бренд, если у него есть товары
+                cur.execute("SELECT TOP 1 1 FROM dbo.products WHERE id_brand = ?", bid)
+                has_products = cur.fetchone()
+
+                if has_products:
+                    error = "Нельзя удалить бренд: у этого бренда есть товары"
+                else:
+                    cur.execute("EXEC dbo.sp_delete_brand ?", bid)
+                    conn.commit()
+                    success = "Бренд удалён"
 
             # ---------- CATEGORIES ----------
             elif action == "add_category":
-                name = request.form["category_name"]
+                name = request.form.get("category_name", "").strip()
                 parent = request.form.get("parent_id") or None
-                cur.execute("EXEC dbo.sp_add_category ?, ?", name, parent)
-                conn.commit()
-                success = "Категория добавлена"
+                parent_id = int(parent) if str(parent).isdigit() else None
+
+                if not name:
+                    error = "Название категории обязательно"
+                else:
+                    # ✅ Дубль: одинаковое имя в рамках одного parent_id
+                    # (чтобы можно было иметь одинаковые названия в разных ветках)
+                    cur.execute("""
+                        SELECT TOP 1 category_id
+                        FROM dbo.categories
+                        WHERE LTRIM(RTRIM(LOWER(name))) = LTRIM(RTRIM(LOWER(?)))
+                          AND (
+                                (parent_id IS NULL AND ? IS NULL)
+                             OR (parent_id = ?)
+                          )
+                    """, name, parent_id, parent_id)
+                    exists_row = cur.fetchone()
+
+                    if exists_row:
+                        error = f"Категория/подкатегория с названием '{name}' уже существует"
+                    else:
+                        cur.execute("EXEC dbo.sp_add_category ?, ?", name, parent_id)
+                        conn.commit()
+                        success = "Категория добавлена"
 
             elif action == "edit_category":
                 cid = int(request.form["category_id"])
-                name = request.form["category_name"]
+                name = request.form.get("category_name", "").strip()
                 parent = request.form.get("parent_id") or None
-                cur.execute("EXEC dbo.sp_update_category ?, ?, ?", cid, name, parent)
-                conn.commit()
-                success = "Категория обновлена"
+                parent_id = int(parent) if str(parent).isdigit() else None
+
+                if not name:
+                    error = "Название категории обязательно"
+                else:
+                    # ✅ дубль имени в том же parent_id, исключая текущую категорию
+                    cur.execute("""
+                        SELECT TOP 1 category_id
+                        FROM dbo.categories
+                        WHERE LTRIM(RTRIM(LOWER(name))) = LTRIM(RTRIM(LOWER(?)))
+                          AND (
+                                (parent_id IS NULL AND ? IS NULL)
+                             OR (parent_id = ?)
+                          )
+                          AND category_id <> ?
+                    """, name, parent_id, parent_id, cid)
+                    exists_row = cur.fetchone()
+
+                    if exists_row:
+                        error = f"Категория/подкатегория с названием '{name}' уже существует"
+                    else:
+                        cur.execute("EXEC dbo.sp_update_category ?, ?, ?", cid, name, parent_id)
+                        conn.commit()
+                        success = "Категория обновлена"
 
             elif action == "delete_category":
-                cur.execute("EXEC dbo.sp_delete_category ?", int(request.form["category_id"]))
-                conn.commit()
-                success = "Категория удалена"
+                cid = int(request.form["category_id"])
+
+                # ✅ нельзя удалить категорию, если в ней есть товары
+                cur.execute("SELECT TOP 1 1 FROM dbo.products WHERE category_id = ?", cid)
+                has_products = cur.fetchone()
+
+                if has_products:
+                    error = "Нельзя удалить категорию/подкатегорию: в ней есть товары"
+                else:
+                    cur.execute("EXEC dbo.sp_delete_category ?", cid)
+                    conn.commit()
+                    success = "Категория удалена"
 
             # ---------- PRODUCTS ----------
             elif action == "add_product":
