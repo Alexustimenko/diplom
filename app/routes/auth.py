@@ -75,8 +75,9 @@ def _require_login():
 
 @auth_bp.route("/")
 def index():
-    q_raw = request.args.get("q", "")        # ✅ НЕ strip — чтобы пробел не исчезал из инпута
-    q = q_raw.strip()                         # ✅ для SQL-поиска можно trim
+    # ✅ q_raw — как есть (для инпута), q — обрезанный (для SQL)
+    q_raw = request.args.get("q", "")
+    q = q_raw.strip()
 
     # фильтры
     category_id_raw = request.args.get("category_id", "").strip()
@@ -102,21 +103,15 @@ def index():
     cur.execute("SELECT category_id, name, parent_id FROM dbo.categories ORDER BY name")
     categories = cur.fetchall()
 
-    # 2) бренды для выпадашки (таблица называется brand)
-    cur.execute("SELECT id_brand, name FROM dbo.brand ORDER BY name")
-    brands = cur.fetchall()
-
-    # 3) определить ветку "запчасти" по названию категорий (без доп. таблиц)
+    # 2) построим дерево категорий и ветку "запчасти"
     parts_roots = set()
+    children_map = {}
+
     for c in categories:
         if c.name and "запчаст" in c.name.lower():
             parts_roots.add(int(c.category_id))
-
-    children_map = {}
-    for c in categories:
-        if c.parent_id is None:
-            continue
-        children_map.setdefault(int(c.parent_id), []).append(int(c.category_id))
+        if c.parent_id is not None:
+            children_map.setdefault(int(c.parent_id), []).append(int(c.category_id))
 
     def collect_descendants(root_id: int) -> set[int]:
         stack = [root_id]
@@ -138,6 +133,37 @@ def index():
     selected_brand_id = int(brand_id_raw) if brand_id_raw.isdigit() else None
 
     is_parts_mode = bool(selected_category_id and selected_category_id in parts_tree)
+
+    # 3) бренды для выпадашки:
+    #    если выбрана категория — показываем только бренды, у которых есть товары в этой категории (и её подкатегориях)
+    brands = []
+    cat_ids_for_brand = None
+
+    if selected_category_id:
+        cat_ids_for_brand = collect_descendants(selected_category_id)
+
+    if cat_ids_for_brand and len(cat_ids_for_brand) > 0:
+        placeholders = ",".join(["?"] * len(cat_ids_for_brand))
+        cur.execute(f"""
+            SELECT DISTINCT
+                vp.id_brand   AS id_brand,
+                vp.brand_name AS name
+            FROM dbo.vw_products vp
+            WHERE vp.id_brand IS NOT NULL
+              AND vp.category_id IN ({placeholders})
+            ORDER BY vp.brand_name
+        """, *list(cat_ids_for_brand))
+        brands = cur.fetchall()
+    else:
+        cur.execute("SELECT id_brand, name FROM dbo.brand ORDER BY name")
+        brands = cur.fetchall()
+
+    # если выбран бренд, но его нет в доступных брендах — сбросим (чтобы фильтр не давал “пусто”)
+    if selected_brand_id and brands:
+        allowed = {int(b.id_brand) for b in brands}
+        if selected_brand_id not in allowed:
+            selected_brand_id = None
+            brand_id_raw = ""
 
     # 4) WHERE
     params = []
@@ -180,10 +206,12 @@ def index():
 
     # ✅ доп. фильтры только если НЕ запчасти
     if not is_parts_mode:
+        # бренд
         if selected_brand_id:
             where.append("id_brand = ?")
             params.append(selected_brand_id)
 
+        # цвет/материал из description по шаблону "Цвет: ..." и "Материал: ..."
         if color_raw:
             c = color_raw.strip().lower()
             where.append("LOWER(ISNULL(description,'')) LIKE ?")
@@ -222,7 +250,8 @@ def index():
         "index.html",
         products=products,
 
-        q=q_raw,   # ✅ ВАЖНО: в шаблон отдаём q_raw, чтобы пробелы не исчезали
+        # ✅ ВАЖНО: в шаблон отдаём q_raw, чтобы пробелы не исчезали из input
+        q=q_raw,
 
         page=page,
         total_pages=total_pages,
@@ -562,6 +591,8 @@ def admin():
 
                     if exists_row:
                         error = f"Товар с названием '{name}' уже существует"
+                    if price<=0:
+                        error = "Нельзя добавить товар с ценой <= 0"
                     else:
                         cur.execute("""
                             EXEC dbo.sp_add_product
@@ -2295,6 +2326,79 @@ def api_search_parts():
     conn.close()
 
     return jsonify([{"id": int(r.product_id), "name": r.name} for r in rows])
+@auth_bp.route("/api/brands")
+def api_brands_by_category():
+    # можно и без логина — это просто справочник для фильтра
+    category_id_raw = request.args.get("category_id", "").strip()
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # категории (чтобы понять ветку запчастей и собрать подкатегории)
+    cur.execute("SELECT category_id, name, parent_id FROM dbo.categories")
+    categories = cur.fetchall()
+
+    # строим children_map и parts_tree
+    parts_roots = set()
+    children_map = {}
+
+    for c in categories:
+        if c.name and "запчаст" in c.name.lower():
+            parts_roots.add(int(c.category_id))
+        if c.parent_id is not None:
+            children_map.setdefault(int(c.parent_id), []).append(int(c.category_id))
+
+    def collect_descendants(root_id: int) -> set[int]:
+        stack = [root_id]
+        out = set()
+        while stack:
+            x = stack.pop()
+            if x in out:
+                continue
+            out.add(x)
+            for ch in children_map.get(x, []):
+                stack.append(ch)
+        return out
+
+    parts_tree = set()
+    for rid in parts_roots:
+        parts_tree |= collect_descendants(rid)
+
+    # если категория не выбрана — вернём все бренды
+    if not category_id_raw.isdigit():
+        cur.execute("SELECT id_brand, name FROM dbo.brand ORDER BY name")
+        rows = cur.fetchall()
+        conn.close()
+        return jsonify({
+            "ok": True,
+            "is_parts_mode": False,
+            "brands": [{"id_brand": int(r.id_brand), "name": r.name} for r in rows]
+        })
+
+    cat_id = int(category_id_raw)
+    is_parts_mode = cat_id in parts_tree
+
+    # бренды только в выбранной категории + её подкатегориях
+    cat_ids = collect_descendants(cat_id)
+    placeholders = ",".join(["?"] * len(cat_ids))
+
+    cur.execute(f"""
+        SELECT DISTINCT
+            vp.id_brand   AS id_brand,
+            vp.brand_name AS name
+        FROM dbo.vw_products vp
+        WHERE vp.id_brand IS NOT NULL
+          AND vp.category_id IN ({placeholders})
+        ORDER BY vp.brand_name
+    """, *list(cat_ids))
+    rows = cur.fetchall()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "is_parts_mode": is_parts_mode,
+        "brands": [{"id_brand": int(r.id_brand), "name": r.name} for r in rows]
+    })
 
 @auth_bp.route("/api/compat/matrix", methods=["POST"])
 def api_compat_matrix():
