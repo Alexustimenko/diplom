@@ -210,7 +210,7 @@
     </select>
             {% if not is_parts_mode %}
                <div id="nonPartsFilters" style="{% if is_parts_mode %}display:none;{% endif %}">
-    <select name="brand_id" class="search" style="max-width:260px;">
+    <select id="brandSelect" name="brand_id" class="search" style="max-width:260px;">
         <option value="">(все бренды)</option>
         {% for b in brands %}
             <option value="{{ b.id_brand }}"
@@ -461,6 +461,76 @@ function goServerSearch(){
 
     cat.addEventListener("change", applyVisibility);
     applyVisibility(); // на старт
+})();
+</script>
+<script>
+(function(){
+  const cat = document.getElementById("categorySelect");
+  const brand = document.getElementById("brandSelect");
+  const nonParts = document.getElementById("nonPartsFilters");
+
+  if(!cat || !brand) return;
+
+  function setNonPartsVisible(isParts){
+    if(!nonParts) return;
+    nonParts.style.display = isParts ? "none" : "";
+  }
+
+  function rebuildBrands(brands){
+    // запоминаем текущий выбор
+    const current = brand.value;
+
+    // очищаем
+    brand.innerHTML = "";
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = "(все бренды)";
+    brand.appendChild(opt0);
+
+    for(const b of brands){
+      const o = document.createElement("option");
+      o.value = String(b.id_brand);
+      o.textContent = b.name;
+      brand.appendChild(o);
+    }
+
+    // пытаемся вернуть выбранный бренд, если он остался
+    if(current && Array.from(brand.options).some(o => o.value === current)){
+      brand.value = current;
+    }else{
+      brand.value = "";
+    }
+  }
+
+  async function onCategoryChange(){
+    const v = cat.value || "";
+    try{
+      const r = await fetch(`/api/brands?category_id=${encodeURIComponent(v)}`, {
+        headers: {"Accept":"application/json"}
+      });
+      const data = await r.json();
+      if(!data.ok) return;
+
+      rebuildBrands(data.brands || []);
+      setNonPartsVisible(!!data.is_parts_mode);
+
+      // если перешли в "запчасти" — сбросим бренд/цвет/материал визуально (чтоб не путало)
+      if(data.is_parts_mode){
+        brand.value = "";
+        const color = document.querySelector("[name='color']");
+        const material = document.querySelector("[name='material']");
+        if(color) color.value = "";
+        if(material) material.value = "";
+      }
+    }catch(e){
+      // молча
+    }
+  }
+
+  cat.addEventListener("change", onCategoryChange);
+
+  // при загрузке страницы можно тоже синхронизировать (на случай кеша)
+  onCategoryChange();
 })();
 </script>
 </body>
