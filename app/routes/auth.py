@@ -438,26 +438,24 @@ def admin():
             # ---------- BRANDS ----------
             if action == "add_brand":
                 name = request.form.get("brand_name", "").strip()
-
                 if not name:
                     error = "Название бренда обязательно"
                 else:
-                    try:
-                        # триггер сам проверит дубль
+                    # ✅ проверка дубля бренда по имени (без регистра и пробелов)
+                    cur.execute("""
+                        SELECT TOP 1 id_brand
+                        FROM dbo.brand
+                        WHERE LTRIM(RTRIM(LOWER(name))) = LTRIM(RTRIM(LOWER(?)))
+                    """, name)
+                    exists_row = cur.fetchone()
+
+                    if exists_row:
+                        error = f"Бренд с названием '{name}' уже существует"
+                    else:
                         cur.execute("EXEC dbo.sp_add_brand ?", name)
                         conn.commit()
                         success = "Бренд добавлен"
-                    except pyodbc.Error as e:
-                        conn.rollback()
 
-                        msg = str(e)
-                        # если сработал наш THROW (50001/50002) — покажем красивое сообщение
-                        if "50001" in msg:
-                            error = "Название бренда обязательно"
-                        elif "50002" in msg:
-                            error = f"Бренд с названием '{name}' уже существует"
-                        else:
-                            error = msg  # прочие ошибки как есть (красным)
 
             elif action == "edit_brand":
                 brand_id = int(request.form["brand_id"])
