@@ -4,7 +4,7 @@
 <head>
     <title>Каталог</title>
     <style>
-       :root{ --orange:#5D535E; --cyan:#FAF7E7; }
+       :root{ --orange:#CF1B03; --cyan:#FAF7E7; }
 
         body{ margin:0; background:var(--cyan); font-family:Arial, sans-serif; }
 
@@ -44,6 +44,10 @@
             cursor:pointer;
         }
         .btn.primary{ background:var(--orange); border-color:var(--orange); color:white; }
+        .btn.primary.buy {background:#CF1B03;
+  border-color:#CF1B03;
+  color:#fff;}
+        .btn.primary.log{background:#CF1B03; border-color:#CF1B03 color:#fff;}
         .btn:hover{ opacity:0.92; }
 
         .wrap{ max-width:1300px; margin:26px auto; padding:0 16px; }
@@ -371,7 +375,7 @@
 
             <a class="btn" href="/logout">Выйти</a>
         {% else %}
-            <a class="btn primary" href="/login">Войти</a>
+            <a class="btn primary log" href="/login">Войти</a>
         {% endif %}
     </div>
 </div>
@@ -542,10 +546,10 @@
                               style="margin:0;"
                               onclick="event.stopPropagation();">
                             <input type="hidden" name="qty" value="1">
-                            <button class="btn primary" type="submit" style="width:100%;">В корзину</button>
+                            <button class="btn primary buy" type="submit" style="width:100%;">В корзину</button>
                         </form>
                     {% else %}
-                        <a class="btn primary"
+                        <a class="btn primary buy"
                            href="/login"
                            style="width:100%; text-align:center;"
                            onclick="event.stopPropagation();">
