@@ -827,34 +827,44 @@ function goServerSearch(){
 </script>
 <script>
 (function(){
-  // сохраняем скролл перед любым уходом со страницы
+  // 1. Сразу говорим браузеру: "Я сам управляю скроллом, не прыгай вверх"
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+
   function saveScroll(){
-    try { sessionStorage.setItem("catalog_scroll_y", String(window.scrollY || 0)); } catch(e){}
+    try {
+      sessionStorage.setItem("catalog_scroll_y", String(window.scrollY || 0));
+    } catch(e){}
   }
 
-  // восстановим после загрузки
-  window.addEventListener("load", () => {
-    try{
+  // 2. Восстанавливаем максимально рано (до полной загрузки картинок)
+  function restoreScroll() {
+    try {
       const y = parseInt(sessionStorage.getItem("catalog_scroll_y") || "0", 10);
-      if(!isNaN(y) && y > 0) window.scrollTo(0, y);
-    }catch(e){}
-  });
+      if(!isNaN(y) && y > 0) {
+        window.scrollTo(0, y);
+      }
+    } catch(e){}
+  }
 
-  // 1) перед submit фильтров
+  // Выполняем восстановление сразу, как только готов DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', restoreScroll);
+  } else {
+    restoreScroll();
+  }
+
+  // Сохранение при действиях
   const form = document.querySelector('form[action="/"][method="GET"]');
-  if(form){
-    form.addEventListener("submit", saveScroll);
-  }
+  if(form) form.addEventListener("submit", saveScroll);
 
-  // 2) перед авто-поиском (перезагрузка через window.location)
   const input = document.getElementById("searchInput");
-  if(input){
-    input.addEventListener("input", saveScroll);
-  }
+  if(input) input.addEventListener("input", saveScroll);
 
-  // 3) на всякий — при уходе со страницы
   window.addEventListener("beforeunload", saveScroll);
 })();
+
 </script>
 </body>
 </html>
