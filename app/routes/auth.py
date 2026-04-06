@@ -9,6 +9,10 @@ from datetime import datetime
 import re
 import pyodbc
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 
 auth_bp = Blueprint("auth", __name__)
 EMAIL_ALLOWED_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
@@ -60,6 +64,30 @@ def is_valid_email_strict(email: str) -> bool:
 
     return True
 
+def send_order_email(to_email):
+    sender_email = "ustimenko.lesha@gmail.com"
+    sender_password = "fmcoakbuddnebowc"  # сюда вставь app password
+
+    subject = "Новый заказ в магазине ROLMARK"
+    body = """Вы оформили новый заказ.
+Наш менеджер скоро с Вами свяжется.
+Ожидайте пожалуйста."""
+
+    msg = MIMEMultipart()
+    msg["From"] = sender_email
+    msg["To"] = to_email
+    msg["Subject"] = subject
+
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, to_email, msg.as_string())
+        server.quit()
+    except Exception as e:
+        print("Ошибка отправки email:", e)
 def _require_admin():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
@@ -2345,6 +2373,9 @@ def cart_checkout():
 
     session["cart"] = {}
     session.modified = True
+    # отправляем письмо
+    if email:
+        send_order_email(email)
 
     return redirect("/cabinet")
 from flask import jsonify
