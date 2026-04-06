@@ -16,7 +16,7 @@
             display:inline-block; padding:10px 14px; border-radius:10px; border:2px solid var(--cyan);
             background:white; color:#0b3b3b; font-weight:800; text-decoration:none; cursor:pointer;
         }
-        .btn.primary{ background:var(--orange); border-color:var(--orange); color:white; }
+        .btn.primary{ background:#CF1B03; border-color:#CF1B03; color:white; }
         .btn:hover{ opacity:0.92; }
 
         .wrap{ max-width:1100px; margin:26px auto; padding:0 16px; }
@@ -34,85 +34,183 @@
         }
 
         .total{
-            margin-top:14px; display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;
+            margin-top:14px; display:flex; justify-content:space-between; align-items:center;
             font-weight:900; color:#0b3b3b; font-size:18px;
+        }
+
+        details{
+            margin-top:18px;
+            padding:12px;
+            background:#f9f9f9;
+            border-radius:12px;
+        }
+
+        summary{
+            font-weight:900;
+            cursor:pointer;
         }
 
         .muted{ color:#3a6b6b; font-weight:700; }
 
         .actions{ display:flex; gap:12px; flex-wrap:wrap; margin-top:14px; }
+        .checkout-input{
+    padding:10px;
+    border:2px solid var(--cyan);
+    border-radius:10px;
+    font-weight:800;
+}
     </style>
 </head>
 <body>
 
 <div class="topbar">
-    <div class="logo">CHAIR SHOP</div>
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <div class="logo">ROLMARK</div>
+    <div>
         <a class="btn" href="/">Назад в каталог</a>
     </div>
 </div>
 
 <div class="wrap">
     <div class="card">
-        <h2 style="margin:0; color:#0b3b3b;">Корзина</h2>
-        <div class="muted" style="margin-top:6px;">Поменяй количество и нажми “Обновить”.</div>
+
+        <h2 style="margin:0;">Корзина</h2>
 
         {% if not items or items|length == 0 %}
-            <div style="margin-top:14px; font-weight:900; color:#0b3b3b;">Корзина пустая.</div>
+            <div style="margin-top:14px; font-weight:900;">Корзина пустая.</div>
         {% else %}
-            <form method="POST" action="/cart/update">
-                <table>
-                    <tr>
-                        <th style="width:80px;">ID</th>
-                        <th>Товар</th>
-                        <th style="width:140px;">Цена</th>
-                        <th style="width:140px;">Кол-во</th>
-                        <th style="width:160px;">Сумма</th>
-                        <th style="width:140px;">Удалить</th>
-                    </tr>
 
-                    {% for it in items %}
-                    <tr>
-                        <td>{{ it.product_id }}</td>
-                        <td>{{ it.name }}</td>
-                        <td>{{ "%.2f"|format(it.price) }}</td>
-                        <td>
-                            <input class="qty" name="qty_{{ it.product_id }}" value="{{ it.qty }}">
-                        </td>
-                        <td>{{ "%.2f"|format(it.line_total) }}</td>
-                        <td>
-                            <form method="POST" action="/cart/remove/{{ it.product_id }}">
-                                <button class="btn" type="submit">Удалить</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </table>
+        <!-- ОБНОВЛЕНИЕ КОЛИЧЕСТВА -->
+        <form method="POST" action="/cart/update">
+            <table>
+                <tr>
+                    <th>Товар</th>
+                    <th>Цена</th>
+                    <th>Кол-во</th>
+                    <th>Сумма</th>
+                    <th>Удалить</th>
+                </tr>
 
-                <div class="total">
-                    <div>Итого: {{ "%.2f"|format(total) }}</div>
-                </div>
+                {% for it in items %}
+                <tr>
+                    <td>{{ it.name }}</td>
+                    <td>{{ "%.2f"|format(it.price) }} Бел.руб.</td>
+                    <td>
+                        <input class="qty" name="qty_{{ it.product_id }}" value="{{ it.qty }}">
+                    </td>
+                    <td>{{ "%.2f"|format(it.line_total) }} Бел.руб.</td>
+                    <td>
+                        <a class="btn" href="/cart/remove/{{ it.product_id }}">Удалить</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
 
-                <div class="actions">
-                    <button class="btn primary" type="submit">Обновить</button>
-                </div>
-            </form>
+            <div class="total">
+                <div>Итого: <span id="baseTotal">{{ "%.2f"|format(total) }}</span> Бел.руб.</div>
+            </div>
 
             <div class="actions">
-                <form method="POST" action="/cart/clear">
-                    <button class="btn" type="submit">Очистить корзину</button>
-                </form>
-
-                <!-- позже сюда добавим кнопку "Купить" -->
-                <form method="POST" action="/cart/checkout">
-    <button class="btn primary" type="submit">
-        Купить
-    </button>
-</form>
+                <button class="btn primary" type="submit">Обновить</button>
             </div>
+        </form>
+
+        <!-- ОФОРМЛЕНИЕ ЗАКАЗА -->
+        <form method="POST" action="/cart/checkout">
+
+            <hr style="margin:30px 0;">
+
+            <h3>Данные для доставки</h3>
+
+            <div style="display:grid; gap:12px; max-width:600px;">
+
+                <input class="checkout-input" name="first_name" placeholder="Имя" required>
+                <input class="checkout-input" name="last_name" placeholder="Фамилия" required>
+
+                <input class="checkout-input" name="email" value="{{ session.get('email') }}" required>
+
+                <input class="checkout-input" id="phoneInput" name="phone"
+                       placeholder="+375 (__) ___ __ __" required>
+
+                <input class="checkout-input" id="addressInput" name="delivery_address"
+                       placeholder="Адрес доставки" required>
+
+                <textarea class="checkout-input" name="comment"
+                          placeholder="Комментарий к заказу"></textarea>
+            </div>
+
+            <!-- СПОСОБ ОПЛАТЫ -->
+            <details>
+                <summary>Способ оплаты</summary>
+                <div style="margin-top:10px; display:grid; gap:6px;">
+                    <label><input type="radio" name="payment_method" value="card" checked> Картой при получении</label>
+                    <label><input type="radio" name="payment_method" value="cash"> Наличными при получении</label>
+                    <label><input type="radio" name="payment_method" value="erip"> Через ЕРИП</label>
+                </div>
+            </details>
+
+            <!-- СПОСОБ ДОСТАВКИ -->
+            <details>
+                <summary>Способ доставки</summary>
+                <div style="margin-top:10px; display:grid; gap:6px;">
+                    <label><input type="radio" name="delivery_method" value="pickup" checked> Самовывоз</label>
+                    <label><input type="radio" name="delivery_method" value="minsk"> Курьерская доставка по Минску</label>
+                    <label><input type="radio" name="delivery_method" value="belarus"> Доставка по Беларуси</label>
+
+                    <div id="belarusInfo" style="display:none; font-size:14px;">
+                        Осуществляем доставку по Республике Беларусь.
+                        Стоимость доставки уточняйте у менеджера:
+                        +375 (29) 351 45 50 или +375 (29) 751 45 50
+                    </div>
+                </div>
+            </details>
+
+            <div class="actions">
+                <button class="btn primary" type="submit">Купить</button>
+            </div>
+
+        </form>
+
         {% endif %}
     </div>
 </div>
+
+<script>
+const radios = document.querySelectorAll("input[name='delivery_method']");
+const addressInput = document.getElementById("addressInput");
+const belarusInfo = document.getElementById("belarusInfo");
+const baseTotal = parseFloat(document.getElementById("baseTotal")?.innerText || 0);
+
+radios.forEach(r => {
+    r.addEventListener("change", function(){
+
+        let total = baseTotal;
+
+        if(this.value === "pickup"){
+            addressInput.value = "Самовывоз";
+            addressInput.readOnly = true;  // блокируем ввод
+            belarusInfo.style.display = "none";
+        }
+
+        if(this.value === "minsk"){
+            addressInput.value = "";       // очищаем
+            addressInput.readOnly = false; // разрешаем ввод
+            belarusInfo.style.display = "none";
+
+            if(baseTotal < 140){
+                total += 10;
+            }
+        }
+
+        if(this.value === "belarus"){
+            addressInput.value = "";       // очищаем
+            addressInput.readOnly = false; // разрешаем ввод
+            belarusInfo.style.display = "block";
+        }
+
+        document.getElementById("baseTotal").innerText = total.toFixed(2);
+    });
+});
+</script>
 
 </body>
 </html>

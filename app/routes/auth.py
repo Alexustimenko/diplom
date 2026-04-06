@@ -246,6 +246,9 @@ def index():
     """, *(params + [offset, per_page]))
 
     products = cur.fetchall()
+    # ✅ ХИТЫ ПРОДАЖ (TOP-3)
+    cur.execute("EXEC dbo.sp_top3_best_sellers")
+    hits = cur.fetchall()
     conn.close()
 
     return render_template(
@@ -266,6 +269,7 @@ def index():
 
         price_from=price_from_raw,
         price_to=price_to_raw,
+        hits=hits,
 
         color=color_raw,
         material=material_raw,
@@ -2263,7 +2267,6 @@ def cart_checkout():
     """, *ids)
 
     rows = cur.fetchall()
-
     price_map = {int(r.product_id): float(r.price) for r in rows}
 
     total = 0.0
@@ -2272,17 +2275,70 @@ def cart_checkout():
         q = int(qty)
         total += price_map.get(pid, 0.0) * q
 
-    # 1) создаём заказ в orders
-    cur.execute("EXEC dbo.sp_place_order ?, ?", user_id, total)
+    # ============================
+    # ✅ НОВЫЕ ПОЛЯ
+    # ============================
+
+    first_name = request.form.get("first_name")
+    last_name = request.form.get("last_name")
+    email = request.form.get("email")
+    phone = request.form.get("phone")
+    delivery_address = request.form.get("delivery_address")
+    comment = request.form.get("comment")
+    payment_method = request.form.get("payment_method")
+    delivery_method = request.form.get("delivery_method")
+
+    delivery_cost = 0
+
+    if delivery_method == "pickup":
+        delivery_address = "Самовывоз"
+
+    if delivery_method == "minsk" and total < 140:
+        delivery_cost = 10
+
+    total += delivery_cost
+
+    # ============================
+    # 1) создаём заказ
+    # ============================
+
+    cur.execute("""
+    DECLARE @new_id INT;
+
+    EXEC dbo.sp_place_order
+        ?,?,?,?,?,?,?,?,?,?,?,
+        @new_id = @new_id OUTPUT;
+
+    SELECT @new_id;
+    """,
+                user_id,
+                total,
+                delivery_address,
+                first_name,
+                last_name,
+                email,
+                phone,
+                comment,
+                payment_method,
+                delivery_method,
+                delivery_cost
+                )
+
     order_id = cur.fetchone()[0]
 
-    # 2) добавляем позиции в order_items
+    # ============================
+    # 2) позиции заказа
+    # ============================
+
     for pid_str, qty in cart.items():
         pid = int(pid_str)
         q = int(qty)
         price = price_map.get(pid, 0.0)
 
-        cur.execute("EXEC dbo.sp_add_order_item ?, ?, ?, ?", order_id, pid, q, price)
+        cur.execute(
+            "EXEC dbo.sp_add_order_item ?, ?, ?, ?",
+            order_id, pid, q, price
+        )
 
     conn.commit()
     conn.close()

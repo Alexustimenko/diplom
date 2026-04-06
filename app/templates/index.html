@@ -4,12 +4,12 @@
 <head>
     <title>Каталог</title>
     <style>
-        :root{ --orange:#5D535E; --cyan:#BBC3C6; }
+       :root{ --orange:#5D535E; --cyan:#FAF7E7; }
 
         body{ margin:0; background:var(--cyan); font-family:Arial, sans-serif; }
 
         .topbar{
-            background:white;
+            background:#CF1B03;
             padding:14px 20px;
             display:flex;
             justify-content:space-between;
@@ -19,7 +19,7 @@
 
         .logo{
             font-weight:900;
-            color:var(--orange);
+            color:white;
             letter-spacing:0.06em;
             font-size:22px;
         }
@@ -156,16 +156,196 @@
             color:#0b3b3b;
         }
         .muted{ color:#3a6b6b; font-weight:700; }
+        .brandline{
+  text-align:center;
+  font-family: "Inter", Arial, sans-serif;
+  font-size:36px;
+  font-weight:900;
+  color:#000;
+  margin:18px 0 0;
+}
+        .slider{
+  width:980px;
+  height:466px;
+  margin:16px auto 0;
+  position:relative;
+  border-radius:16px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 10px 25px rgba(0,0,0,0.18);
+}
+
+.slider .slide{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  opacity:0;
+  transition:opacity .45s ease;
+  pointer-events:none;
+}
+
+.slider .slide.active{
+  opacity:1;
+  pointer-events:auto;
+}
+
+.slider .nav{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  width:44px;
+  height:44px;
+  border-radius:999px;
+  border:2px solid rgba(255,255,255,.7);
+  background:rgba(0,0,0,.25);
+  color:#fff;
+  font-size:28px;
+  font-weight:900;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.slider .nav:hover{ background:rgba(0,0,0,.35); }
+.slider .nav.prev{ left:12px; }
+.slider .nav.next{ right:12px; }
+
+.slider .dots{
+  position:absolute;
+  left:0; right:0;
+  bottom:12px;
+  display:flex;
+  justify-content:center;
+  gap:10px;
+}
+
+.slider .dot{
+  width:12px;
+  height:12px;
+  border-radius:999px;
+  border:2px solid rgba(255,255,255,.9);
+  background:rgba(0,0,0,.2);
+  cursor:pointer;
+}
+
+.slider .dot.active{
+  background:#fff;
+}
+        .hits-title{
+  text-align:center;
+  font-weight:900;
+  color:#CF1B03;
+  font-size:36px;
+  margin:18px 0 8px;
+}
+        .hits-grid{
+  margin: 18px auto 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  max-width: 1100px;
+}
+@media (max-width: 980px){
+  .hits-grid{ grid-template-columns: 1fr; }
+}
+
+.hit-card{
+  background: white;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.14);
+  cursor: pointer;
+  transition: transform .08s ease;
+}
+.hit-card:hover{ transform: translateY(-1px); }
+
+.hit-img{
+  width: 100%;
+  height: 220px;
+  object-fit: contain;
+  border-radius: 14px;
+  border: 2px solid #e8e8e8;
+  background: #fafafa;
+  padding: 10px;
+  box-sizing: border-box;
+}
+.hit-name{
+  margin-top: 10px;
+  font-weight: 900;
+  color: #0b3b3b;
+}
+.hit-sub{
+  margin-top: 6px;
+  font-weight: 800;
+  color: #CF1B03;
+}
+.hero h1{
+  margin: 0 0 6px 0;
+  color: #000;
+  font-size: 36px;
+  font-weight: 900;
+  text-align: center;
+}
+/* placeholder (поиск, цена от/до и любые инпуты/селекты с классом .search) */
+.search::placeholder{
+  color:#000;
+  font-weight:900;
+  opacity:1;              /* чтобы не был полупрозрачным */
+}
+
+/* для Firefox */
+.search::-moz-placeholder{
+  color:#000;
+  font-weight:900;
+  opacity:1;
+}
+
+/* для старых Edge/IE (если вдруг) */
+.search:-ms-input-placeholder{
+  color:#000;
+  font-weight:900;
+}
+.search::-ms-input-placeholder{
+  color:#000;
+  font-weight:900;
+}
+/* кнопки фильтров */
+.btn.filter-btn{
+  background:#CF1B03;
+  border-color:#CF1B03;
+  color:#fff;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+}
+.btn.filter-btn:hover{ opacity:.92; }
+
+.btn.reset-btn{
+  background:#fff;
+  border-color:#CF1B03;
+  color:#CF1B03;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+}
+.btn.reset-btn:hover{ opacity:.92; }
+/* сделать кнопки длиннее */
+.btn.filter-btn,
+.btn.reset-btn{
+  min-width: 220px;      /* длина */
+  padding: 12px 22px;    /* толще */
+  text-align: center;
+}
     </style>
 </head>
 <body>
 
+
 <div class="topbar">
-    <div class="logo">CHAIR SHOP</div>
+    <div class="logo">ROLMARK</div>
 
     <div class="right">
         {% if session.get("user_id") %}
-            <span style="font-weight:900;color:#0b3b3b;">{{ session.get("email") }}</span>
+            <span style="font-weight:900;color:white;">{{ session.get("email") }}</span>
 
             <!-- ✅ новые кнопки -->
             <a class="btn" href="/smart">Подобрать товар</a>
@@ -176,7 +356,7 @@
             {% if session.get("is_admin") == 1 %}
                 <a class="btn primary" href="/admin">Админка</a>
             {% else %}
-                <a class="btn primary" href="/cabinet">Личный кабинет</a>
+                <a class="btn" href="/cabinet">Личный кабинет</a>
             {% endif %}
 
             <a class="btn" href="/logout">Выйти</a>
@@ -185,11 +365,43 @@
         {% endif %}
     </div>
 </div>
+<div class="brandline">ROLMARK - НЕТРИВИАЛЬНАЯ МЕБЕЛЬ</div>
+<div class="slider" id="heroSlider">
+  <img class="slide active" src="/static/banner1.jpg" alt="banner 1">
+  <img class="slide" src="/static/banner2.jpg" alt="banner 2">
+
+  <button class="nav prev" type="button" aria-label="prev">‹</button>
+  <button class="nav next" type="button" aria-label="next">›</button>
+
+  <div class="dots">
+    <button class="dot active" type="button" data-i="0" aria-label="slide 1"></button>
+    <button class="dot" type="button" data-i="1" aria-label="slide 2"></button>
+  </div>
+</div>
+<h2 class="hits-title">ХИТЫ ПРОДАЖ</h2>
+{% if hits and hits|length > 0 %}
+  <div class="hits-grid">
+    {% for h in hits %}
+      <div class="hit-card" onclick="window.location.href='/product/{{ h.product_id }}';">
+        <img class="hit-img"
+             src="/product_image/{{ h.product_id }}"
+             alt=""
+             onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22240%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23f2f2f2%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-family=%22Arial%22 font-size=%2216%22>No image</text></svg>';">
+        <div class="hit-name">{{ h.name }}</div>
+        <div class="hit-sub">Купили: {{ h.sold_qty }} шт.</div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="muted" style="text-align:center; margin-top:10px;">
+    Пока нет данных о продажах.
+  </div>
+{% endif %}
 <div class="wrap">
 
     <div class="hero">
         <h1>Каталог офисных товаров</h1>
-        <p>Дальше подключим фильтры, пагинацию и подбор/сравнение.</p>
+
 
         <div class="search-row">
             <input id="searchInput" class="search" placeholder="Поиск по товарам, описанию, бренду, категории…" value="{{ q if q else '' }}">
@@ -243,15 +455,30 @@
 
 
 
-    <input class="search" style="max-width:180px;"
-           name="price_from" placeholder="Цена от" value="{{ price_from if price_from else '' }}">
+    <!-- ...тут у тебя categorySelect и (если не запчасти) nonPartsFilters... -->
 
-    <input class="search" style="max-width:180px;"
-           name="price_to" placeholder="Цена до" value="{{ price_to if price_to else '' }}">
+<!-- перенос на новую строку -->
+<div style="flex-basis:100%; height:0;"></div>
 
-    <button class="btn primary" type="submit">Фильтровать</button>
+<!-- 2-я строка: цены -->
+<div class="search-row" style="width:100%; margin-top:0;">
+  <input class="search" style="max-width:180px;"
+         name="price_from" placeholder="Цена от"
+         value="{{ price_from if price_from else '' }}">
 
-    <a class="btn" href="/">Сброс</a>
+  <input class="search" style="max-width:180px;"
+         name="price_to" placeholder="Цена до"
+         value="{{ price_to if price_to else '' }}">
+</div>
+
+<!-- перенос на новую строку -->
+<div style="flex-basis:100%; height:0;"></div>
+
+<!-- 3-я строка: кнопки -->
+<div class="search-row" style="width:100%; margin-top:0;">
+  <button class="btn filter-btn" type="submit">Фильтровать</button>
+  <a class="btn reset-btn" href="/">Сброс</a>
+</div>
 </form>
 
 {% if is_parts_mode %}
@@ -291,12 +518,12 @@
                     {{ p.category_name if p.category_name else "-" }} / {{ p.brand_name if p.brand_name else "-" }}
                 </div>
 
-                <div class="prices">
-                    {% if p.old_price %}
-                        <div class="old">{{ p.old_price }}</div>
-                    {% endif %}
-                    <div class="price">{{ p.price }}</div>
-                </div>
+              <div class="prices">
+  {% if p.old_price %}
+    <div class="old">{{ p.old_price }} <span style="font-weight:800; color:#999;">Бел.руб.</span></div>
+  {% endif %}
+  <div class="price">{{ p.price }} <span style="font-weight:900; color:#CF1B03; font-size:16px;">Бел.руб.</span></div>
+</div>
 
                 <!-- ✅ КНОПКА В КОРЗИНУ (только для авторизованных) -->
                 <div style="margin-top:14px;">
@@ -531,6 +758,88 @@ function goServerSearch(){
 
   // при загрузке страницы можно тоже синхронизировать (на случай кеша)
   onCategoryChange();
+})();
+
+</script>
+<script>
+(function(){
+  const root = document.getElementById("heroSlider");
+  if(!root) return;
+
+  const slides = Array.from(root.querySelectorAll(".slide"));
+  const dots = Array.from(root.querySelectorAll(".dot"));
+  const btnPrev = root.querySelector(".prev");
+  const btnNext = root.querySelector(".next");
+
+  let i = 0;
+  let t = null;
+
+  function setActive(idx){
+    i = (idx + slides.length) % slides.length;
+    slides.forEach((s, k) => s.classList.toggle("active", k === i));
+    dots.forEach((d, k) => d.classList.toggle("active", k === i));
+  }
+
+  function next(){ setActive(i + 1); }
+  function prev(){ setActive(i - 1); }
+
+  function start(){
+    stop();
+    t = setInterval(next, 3000); // ✅ каждые 3 секунды
+  }
+  function stop(){
+    if(t) clearInterval(t);
+    t = null;
+  }
+
+  if(btnNext) btnNext.addEventListener("click", ()=>{ next(); start(); });
+  if(btnPrev) btnPrev.addEventListener("click", ()=>{ prev(); start(); });
+
+  dots.forEach(d => {
+    d.addEventListener("click", () => {
+      const idx = parseInt(d.dataset.i, 10);
+      if(!isNaN(idx)) setActive(idx);
+      start();
+    });
+  });
+
+  // пауза при наведении
+  root.addEventListener("mouseenter", stop);
+  root.addEventListener("mouseleave", start);
+
+  setActive(0);
+  start();
+})();
+</script>
+<script>
+(function(){
+  // сохраняем скролл перед любым уходом со страницы
+  function saveScroll(){
+    try { sessionStorage.setItem("catalog_scroll_y", String(window.scrollY || 0)); } catch(e){}
+  }
+
+  // восстановим после загрузки
+  window.addEventListener("load", () => {
+    try{
+      const y = parseInt(sessionStorage.getItem("catalog_scroll_y") || "0", 10);
+      if(!isNaN(y) && y > 0) window.scrollTo(0, y);
+    }catch(e){}
+  });
+
+  // 1) перед submit фильтров
+  const form = document.querySelector('form[action="/"][method="GET"]');
+  if(form){
+    form.addEventListener("submit", saveScroll);
+  }
+
+  // 2) перед авто-поиском (перезагрузка через window.location)
+  const input = document.getElementById("searchInput");
+  if(input){
+    input.addEventListener("input", saveScroll);
+  }
+
+  // 3) на всякий — при уходе со страницы
+  window.addEventListener("beforeunload", saveScroll);
 })();
 </script>
 </body>
