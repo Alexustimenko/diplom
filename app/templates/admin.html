@@ -168,6 +168,29 @@ th:last-child, td:last-child{
     background:transparent;
     padding:0;
   }
+  .status-red{
+    background:#ffcccc;
+    color:#b10000;
+    padding:6px 10px;
+    border-radius:8px;
+    font-weight:900;
+}
+
+.status-yellow{
+    background:#fff3cd;
+    color:#a87400;
+    padding:6px 10px;
+    border-radius:8px;
+    font-weight:900;
+}
+
+.status-green{
+    background:#d4edda;
+    color:#0f6b2e;
+    padding:6px 10px;
+    border-radius:8px;
+    font-weight:900;
+}
     </style>
 </head>
 
@@ -717,6 +740,69 @@ th:last-child, td:last-child{
       </tr>
       {% endfor %}
     </table>
+  </div>
+</details>
+<details class="card" open>
+  <summary class="collapse-head" style="cursor:pointer;">
+    <div class="section-title" style="margin:0; width:100%;">
+      <h2 style="margin:0;">Заказы</h2>
+    </div>
+  </summary>
+
+  <div style="margin-top:12px;">
+
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>Email</th>
+        <th>Телефон</th>
+        <th>Статус</th>
+        <th>Сумма</th>
+        <th>Действия</th>
+      </tr>
+
+      {% for o in orders_admin %}
+      <tr>
+        <td>{{ o.order_id }}</td>
+        <td>{{ o.email }}</td>
+        <td>{{ o.phone }}</td>
+
+        <td>
+          <span class="
+            {% if o.status == 'Ожидает обработки' %}
+              status-red
+            {% elif o.status == 'Обработан' %}
+              status-yellow
+            {% elif o.status == 'Готов к выдаче' %}
+              status-green
+            {% endif %}
+          ">
+            {{ o.status }}
+          </span>
+        </td>
+
+        <td>{{ "%.2f"|format(o.total_amount) }}</td>
+
+        <td>
+          <form method="POST" class="row">
+            <input type="hidden" name="action" value="update_order_status">
+            <input type="hidden" name="order_id" value="{{ o.order_id }}">
+
+            <select name="new_status">
+              <option>Ожидает обработки</option>
+              <option>Обработан</option>
+              <option>Готов к выдаче</option>
+            </select>
+
+            <button class="btn primary" type="submit">
+              Сохранить
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
   </div>
 </details>
 

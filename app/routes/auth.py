@@ -88,6 +88,31 @@ def send_order_email(to_email):
         server.quit()
     except Exception as e:
         print("Ошибка отправки email:", e)
+import smtplib
+from email.mime.text import MIMEText
+
+def send_ready_email(user_email, order_id):
+
+    sender = "ustimenko.lesha@gmail.com"
+    password = "fmcoakbuddnebowc"  # обязательно app password
+
+    subject = "Новая информация по заказу"
+    body = f"""
+Ваш заказ №{order_id} готов к выдаче.
+
+Если оформляли самовывоз — заберите его.
+
+Если оформляли доставку — курьер выехал и скоро Вам позвонит.
+"""
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = user_email
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender, password)
+        server.send_message(msg)
 def _require_admin():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
@@ -626,6 +651,30 @@ def admin():
                     cur.execute("EXEC dbo.sp_delete_category ?", cid)
                     conn.commit()
                     success = "Категория удалена"
+            # ---------- UPDATE ORDER STATUS ----------
+            elif action == "update_order_status":
+                order_id = int(request.form["order_id"])
+                new_status = request.form.get("new_status")
+
+                cur.execute("UPDATE dbo.orders SET status=? WHERE order_id=?",
+                            new_status, order_id)
+                conn.commit()
+
+                success = "Статус заказа обновлён"
+
+                # если статус Готов к выдаче → отправляем письмо
+                if new_status == "Готов к выдаче":
+
+                    cur.execute("""
+                        SELECT u.email
+                        FROM dbo.orders o
+                        JOIN dbo.users u ON o.user_id = u.user_id
+                        WHERE o.order_id = ?
+                    """, order_id)
+
+                    row = cur.fetchone()
+                    if row:
+                        send_ready_email(row.email, order_id)
 
             # ---------- PRODUCTS ----------
             elif action == "add_product":
@@ -742,11 +791,15 @@ def admin():
     cur.execute("SELECT * FROM dbo.vw_products ORDER BY product_id DESC")
     products = cur.fetchall()
 
+    cur.execute("EXEC dbo.sp_get_all_orders_admin")
+    orders_admin = cur.fetchall()
+
     conn.close()
 
     return render_template(
         "admin.html",
         brands=brands,
+        orders_admin=orders_admin,
         categories=categories,
         products=products,
         tab="products",
