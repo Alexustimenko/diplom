@@ -443,10 +443,40 @@ def cabinet():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
 
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("EXEC dbo.sp_get_user_orders ?", session["user_id"])
+    rows = cur.fetchall()
+    conn.close()
+
+    orders_dict = {}
+
+    for r in rows:
+        oid = r.order_id
+
+        if oid not in orders_dict:
+            orders_dict[oid] = {
+                "order_id": oid,
+                "created_at": r.created_at,
+                "total": r.total_amount,
+                "items": []
+            }
+
+        orders_dict[oid]["items"].append({
+            "product_name": r.product_name,
+            "qty": r.quantity,
+            "price": r.price_at_moment
+        })
+
+    # 👇 превращаем в список
+    orders = list(orders_dict.values())
+
     return render_template(
         "cabinet.html",
         email=session.get("email"),
         customer_type=session.get("customer_type"),
+        orders=orders
     )
 
 

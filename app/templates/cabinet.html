@@ -16,6 +16,82 @@
         .hint { color: #2f6e6e; font-size: 18px; }
         a { color:#CF1B03; font-weight:bold; text-decoration:none; }
         .tag { display:inline-block; padding:6px 10px; border-radius: 8px; background:#33CCCC; color:white; font-weight: bold; }
+        .toggle-btn{
+    width:100%;
+    padding:12px;
+    background:#CF1B03;
+    color:white;
+    border:none;
+    border-radius:10px;
+    font-weight:900;
+    cursor:pointer;
+}
+
+.order-card{
+    background:#fafafa;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:15px;
+    box-shadow:0 5px 15px rgba(0,0,0,.1);
+}
+
+.order-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-weight:bold;
+}
+
+.details-btn{
+    background:white;
+    border:2px solid #CF1B03;
+    color:#CF1B03;
+    padding:6px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.order-details{
+    display:none;
+    margin-top:15px;
+}
+
+.order-details table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.order-details th, .order-details td{
+    padding:8px;
+    border-bottom:1px solid #ddd;
+    text-align:left;
+}
+
+.order-total{
+    margin-top:10px;
+    font-weight:900;
+    text-align:right;
+}
+        .print-btn{
+    margin-top:10px;
+    padding:8px 12px;
+    border:2px solid #CF1B03;
+    background:white;
+    color:#CF1B03;
+    font-weight:900;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.print-btn:hover{
+    background:#CF1B03;
+    color:white;
+}
+
+.print-area{
+    display:none;
+}
     </style>
 </head>
 <body>
@@ -24,9 +100,152 @@
     <p>Email: <b>{{ email }}</b></p>
     <p>Тип клиента: <span class="tag">{{ customer_type }}</span></p>
 
-    <p class="hint">Скоро тут будет именно ваша история заказов ✅</p>
+    <hr style="margin:20px 0;">
 
-    <p><a href="/">На главную</a> · <a href="/logout">Выйти</a></p>
+    <div class="orders-section">
+        <button class="toggle-btn" onclick="toggleMain()">
+            Ваши заказы ▼
+        </button>
+
+        <div id="ordersBlock" style="display:none; margin-top:20px;">
+
+            {% if not orders %}
+                <p style="font-weight:bold;">У вас пока нет заказов.</p>
+            {% else %}
+
+                {% for o in orders %}
+                    <div class="order-card">
+
+                        <div class="order-head">
+                            <div>
+                                <b>№ {{ o.order_id }}</b> |
+                                {{ o.created_at.strftime("%d.%m.%Y %H:%M") }}
+                            </div>
+
+                            <button class="details-btn"
+                                    onclick="toggleDetails('order{{ o.order_id }}')">
+                                Подробнее
+                            </button>
+                        </div>
+
+                        <div id="order{{ o.order_id }}" class="order-details">
+                            <table>
+                                <tr>
+                                    <th>Товар</th>
+                                    <th>Кол-во</th>
+                                    <th>Цена</th>
+                                </tr>
+
+                                {% for item in o["items"] %}
+                                <tr>
+                                    <td>{{ item.product_name }}</td>
+                                    <td>{{ item.qty }}</td>
+                                    <td>{{ "%.2f"|format(item.price) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+
+                            <div class="order-total">
+    Итого: {{ "%.2f"|format(o.total) }} Бел.руб.
 </div>
+
+<button class="print-btn"
+        onclick="printOrder('print{{ o.order_id }}')">
+    Распечатать
+</button>
+                            <div id="print{{ o.order_id }}" class="print-area">
+    <h2>Заказ № {{ o.order_id }}</h2>
+    <p>Дата: {{ o.created_at.strftime("%d.%m.%Y %H:%M") }}</p>
+
+    <table>
+        <tr>
+            <th>Товар</th>
+            <th>Кол-во</th>
+            <th>Цена</th>
+        </tr>
+
+        {% for item in o["items"] %}
+        <tr>
+            <td>{{ item.product_name }}</td>
+            <td>{{ item.qty }}</td>
+            <td>{{ "%.2f"|format(item.price) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h3 style="margin-top:20px;">
+        Итого: {{ "%.2f"|format(o.total) }} Бел.руб.
+    </h3>
+</div>
+                        </div>
+
+                    </div>
+                {% endfor %}
+
+            {% endif %}
+        </div>
+    </div>
+
+    <p style="margin-top:20px;">
+        <a href="/">На главную</a> · <a href="/logout">Выйти</a>
+    </p>
+</div>
+</div>
+<script>
+function toggleMain(){
+    const block = document.getElementById("ordersBlock");
+    block.style.display = block.style.display === "none" ? "block" : "none";
+}
+
+function toggleDetails(id){
+    const el = document.getElementById(id);
+    el.style.display = el.style.display === "none" ? "block" : "none";
+}
+</script>
+<script>
+function printOrder(id){
+
+    const content = document.getElementById(id).innerHTML;
+
+    const win = window.open('', '', 'width=900,height=700');
+
+    win.document.write(`
+        <html>
+        <head>
+            <title>Печать заказа</title>
+            <style>
+                body{
+                    font-family: Arial, sans-serif;
+                    padding:40px;
+                }
+                table{
+                    width:100%;
+                    border-collapse:collapse;
+                    margin-top:20px;
+                }
+                th, td{
+                    border:1px solid #ccc;
+                    padding:8px;
+                    text-align:left;
+                }
+                th{
+                    background:#f5f5f5;
+                }
+                h2{
+                    color:#CF1B03;
+                }
+            </style>
+        </head>
+        <body>
+            ${content}
+        </body>
+        </html>
+    `);
+
+    win.document.close();
+    win.focus();
+    win.print();
+}
+</script>
 </body>
 </html>
