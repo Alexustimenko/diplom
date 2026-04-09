@@ -64,33 +64,86 @@ def is_valid_email_strict(email: str) -> bool:
 
     return True
 
-def send_order_email(to_email):
-    sender_email = "ustimenko.lesha@gmail.com"
-    sender_password = "fmcoakbuddnebowc"  # сюда вставь app password
-
-    subject = "Новый заказ в магазине ROLMARK"
-    body = """Вы оформили новый заказ.
-Наш менеджер скоро с Вами свяжется.
-Ожидайте пожалуйста."""
-
-    msg = MIMEMultipart()
-    msg["From"] = sender_email
-    msg["To"] = to_email
-    msg["Subject"] = subject
-
-    msg.attach(MIMEText(body, "plain"))
-
-    try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, to_email, msg.as_string())
-        server.quit()
-    except Exception as e:
-        print("Ошибка отправки email:", e)
 import smtplib
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+
+def send_order_created_email(user_email,
+                             order_id,
+                             phone,
+                             delivery_type,
+                             items,
+                             total):
+
+    sender = "ustimenko.lesha@gmail.com"
+    password = "fmcoakbuddnebowc"
+
+    subject = "Новый заказ в магазине ROLMARK"
+
+    # -------- формируем строки таблицы --------
+    rows_html = ""
+    for item in items:
+        line_total = item["price"] * item["qty"]
+        rows_html += f"""
+        <tr>
+            <td>{item["name"]}</td>
+            <td>{item["price"]:.2f}</td>
+            <td>{item["qty"]}</td>
+            <td>{line_total:.2f}</td>
+        </tr>
+        """
+
+    # -------- HTML письмо --------
+    html = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif;">
+
+        <p>Здравствуйте!</p>
+
+        <p>Рады видеть в интернет-магазине <b>ROLMARK</b>.</p>
+
+        <p><b>Ваш заказ оформлен.</b></p>
+
+        <p><b>Проверьте контактные данные и детали заказа</b></p>
+
+        <p>
+            Номер заказа: <b>{order_id}</b><br>
+            Телефон: {phone}<br>
+            Почта: {user_email}<br>
+            Вид доставки: {delivery_type}
+        </p>
+
+        <table border="1" cellpadding="8" cellspacing="0" width="100%" style="border-collapse: collapse;">
+            <tr style="background:#f2f2f2; font-weight:bold;">
+                <td>Товар</td>
+                <td>Цена</td>
+                <td>Кол-во</td>
+                <td>Сумма</td>
+            </tr>
+
+            {rows_html}
+
+        </table>
+
+        <p style="margin-top:20px;">
+            <b>Итого: {total:.2f} Бел.руб.</b>
+        </p>
+
+    </body>
+    </html>
+    """
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = user_email
+
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender, password)
+        server.send_message(msg)
 def send_ready_email(user_email, order_id):
 
     sender = "ustimenko.lesha@gmail.com"
@@ -2452,13 +2505,42 @@ def cart_checkout():
         )
 
     conn.commit()
-    conn.close()
+    # собираем товары для письма
+    email_items = []
 
-    session["cart"] = {}
-    session.modified = True
-    # отправляем письмо
-    if email:
-        send_order_email(email)
+    for pid_str, qty in cart.items():
+        pid = int(pid_str)
+        q = int(qty)
+        price = price_map.get(pid, 0.0)
+
+        # получим название
+        cur.execute("SELECT name FROM dbo.products WHERE product_id=?", pid)
+        name_row = cur.fetchone()
+
+        email_items.append({
+            "name": name_row.name,
+            "qty": q,
+            "price": price
+        })
+        dlvrm = request.form.get("delivery_method")
+        dlvr=""
+        if dlvrm == "pickup":
+            dlvr = "Самовывоз"
+        elif dlvrm == "minsk":
+            dlvr="Доставка курьером по Минску"
+        else:
+            dlvr="Доставка по Беларуси"
+
+    # отправка письма
+    send_order_created_email(
+        user_email=session["email"],
+        order_id=order_id,
+        phone=request.form.get("phone"),
+        delivery_type=dlvr,
+        items=email_items,
+        total=total
+    )
+    conn.close()
 
     return redirect("/cabinet")
 from flask import jsonify
