@@ -144,18 +144,29 @@ def send_order_created_email(user_email,
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(sender, password)
         server.send_message(msg)
-def send_ready_email(user_email, order_id):
+def send_ready_email(user_email, order_id, delivery_method):
 
     sender = "ustimenko.lesha@gmail.com"
-    password = "fmcoakbuddnebowc"  # обязательно app password
+    password = "fmcoakbuddnebowc"
 
     subject = "Новая информация по заказу"
-    body = f"""
+
+    # 🔥 логика по способу доставки
+    if delivery_method in ("minsk", "belarus"):
+        body = f"""
 Ваш заказ №{order_id} готов к выдаче.
 
-Если оформляли самовывоз — заберите его.
+Курьер выехал и скоро Вам позвонит.
+"""
+    elif delivery_method == "pickup":
+        body = f"""
+Ваш заказ №{order_id} готов к выдаче.
 
-Если оформляли доставку — курьер выехал и скоро Вам позвонит.
+Заберите его.
+"""
+    else:
+        body = f"""
+Ваш заказ №{order_id} готов к выдаче.
 """
 
     msg = MIMEText(body)
@@ -719,7 +730,7 @@ def admin():
                 if new_status == "Готов к выдаче":
 
                     cur.execute("""
-                        SELECT u.email
+                        SELECT u.email, o.delivery_method
                         FROM dbo.orders o
                         JOIN dbo.users u ON o.user_id = u.user_id
                         WHERE o.order_id = ?
@@ -727,7 +738,7 @@ def admin():
 
                     row = cur.fetchone()
                     if row:
-                        send_ready_email(row.email, order_id)
+                        send_ready_email(row.email, order_id, row.delivery_method)
 
             # ---------- PRODUCTS ----------
             elif action == "add_product":
