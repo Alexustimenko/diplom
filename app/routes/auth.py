@@ -192,54 +192,83 @@ def number_to_words(n):
     # временная простая версия (можем позже сделать правильную пропись)
     return f"{n:.2f} белорусских рублей"
 
-
 def generate_invoice_pdf_and_send(order_id, email, phone, unp, company_name, items, price_map):
 
-    # ========= создаем папку temp если нет =========
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.pdfbase import pdfmetrics
+    from datetime import datetime, timedelta
+    import os
+
     if not os.path.exists("temp"):
         os.makedirs("temp")
 
-    # ========= регистрируем кириллический шрифт =========
     font_path = os.path.join("fonts", "DejaVuSans.ttf")
     pdfmetrics.registerFont(TTFont("DejaVu", font_path))
 
     filename = f"invoice_{order_id}.pdf"
     filepath = os.path.join("temp", filename)
 
-    doc = SimpleDocTemplate(filepath, pagesize=A4)
-    elements = []
+    doc = SimpleDocTemplate(
+        filepath,
+        pagesize=A4,
+        rightMargin=15*mm,
+        leftMargin=15*mm,
+        topMargin=20*mm,
+        bottomMargin=20*mm
+    )
 
-    # ========= стили =========
+    elements = []
     styles = getSampleStyleSheet()
 
     normal_style = ParagraphStyle(
         'CustomNormal',
         parent=styles['Normal'],
         fontName='DejaVu',
-        fontSize=10,
-        leading=12
-    )
-
-    bold_style = ParagraphStyle(
-        'CustomBold',
-        parent=styles['Normal'],
-        fontName='DejaVu',
-        fontSize=10,
-        leading=12
+        fontSize=9,
+        leading=11
     )
 
     today = datetime.now()
     valid_until = today + timedelta(days=5)
 
+    PAGE_WIDTH = 180 * mm
+
     # =============================
-    # 🔷 ВЕРХНЯЯ ТАБЛИЦА 2x3
+    # ПОЛУЧАЕМ НАЗВАНИЯ ТОВАРОВ
+    # =============================
+
+    from app.db import get_conn  # если у тебя другой импорт — поменяй
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    ids = [int(pid) for pid in items.keys()]
+    placeholders = ",".join(["?"] * len(ids))
+
+    cur.execute(
+        f"SELECT product_id, name FROM dbo.products WHERE product_id IN ({placeholders})",
+        *ids
+    )
+
+    rows = cur.fetchall()
+    conn.close()
+
+    name_map = {int(r.product_id): r.name for r in rows}
+
+    # =============================
+    # ВЕРХНЯЯ ТАБЛИЦА
     # =============================
 
     seller_text = """
 ОДО "РОЛМАРК-ТРЕЙД"<br/>
 220099, г. Минск, ул. Лейтенанта Кижеватова, д.8, пом.1<br/>
-р/с BY86TECN30121248300010000000 Банк ОАО "Технобанк"<br/>
-220002, г.Минск, ул. Кропоткина, 44<br/>
+р/с BY86TECN30121248300010000000<br/>
+Банк ОАО "Технобанк"<br/>
 Код TECNBY22<br/>
 тел. 8 017 348 99 82<br/>
 8 (029) 361 65 65, 8 (033) 361 65 65<br/>
@@ -266,24 +295,37 @@ Email: {email}
         ]
     ]
 
-    header_table = Table(header_data, colWidths=[40*mm, 90*mm, 40*mm])
+    header_table = Table(
+        header_data,
+        colWidths=[PAGE_WIDTH*0.25, PAGE_WIDTH*0.50, PAGE_WIDTH*0.25],
+        hAlign='LEFT'
+    )
+
     header_table.setStyle(TableStyle([
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('SPAN', (1, 1), (2, 1)),  # объединяем ячейки
-        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('SPAN', (1,1), (2,1)),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('FONTNAME', (0,0), (-1,-1), 'DejaVu'),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
     ]))
 
     elements.append(header_table)
     elements.append(Spacer(1, 15))
 
     # =============================
-    # 🔷 ТАБЛИЦА ТОВАРОВ
+    # ТАБЛИЦА ТОВАРОВ
     # =============================
 
-    data = [
-        ["Предмет счета", "Ед. изм.", "Кол-во", "Цена",
-         "Отпускная стоимость", "Ставка НДС", "Сумма НДС", "С НДС"]
-    ]
+    data = [[
+        "Предмет счета",
+        "Ед.\nизм.",
+        "Кол-во",
+        "Отпускная\nцена\nруб.",
+        "Отпускная\nстоимость\nруб.",
+        "Ставка\nНДС",
+        "Сумма\nНДС\nруб.",
+        "Сумма\nс НДС\nруб."
+    ]]
 
     total_cost = 0
     total_nds = 0
@@ -293,6 +335,7 @@ Email: {email}
         pid = int(pid_str)
         qty = int(qty)
         price = price_map.get(pid, 0)
+        product_name = name_map.get(pid, f"Товар {pid}")
 
         cost = price * qty
         nds = cost * 0.2
@@ -303,7 +346,7 @@ Email: {email}
         total_with_nds += with_nds
 
         data.append([
-            f"Товар {pid}",
+            product_name,
             "шт.",
             qty,
             f"{price:.2f}",
@@ -321,19 +364,37 @@ Email: {email}
         f"{total_with_nds:.2f}"
     ])
 
-    table = Table(data, repeatRows=1)
-    table.setStyle(TableStyle([
+    items_table = Table(
+        data,
+        colWidths=[
+            PAGE_WIDTH * 0.28,
+            PAGE_WIDTH * 0.06,
+            PAGE_WIDTH * 0.07,
+            PAGE_WIDTH * 0.11,
+            PAGE_WIDTH * 0.14,
+            PAGE_WIDTH * 0.08,
+            PAGE_WIDTH * 0.12,
+            PAGE_WIDTH * 0.14
+        ],
+        repeatRows=1,
+        hAlign='LEFT'
+    )
+
+    items_table.setStyle(TableStyle([
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
         ('FONTNAME', (0, 0), (-1, -1), 'DejaVu'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9)
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (0, -1), (-1, -1), 'DejaVu'),
     ]))
 
-    elements.append(table)
+    elements.append(items_table)
     elements.append(Spacer(1, 15))
 
     # =============================
-    # 🔷 ИТОГИ ПРОПИСЬЮ
+    # ИТОГИ
     # =============================
 
     elements.append(Paragraph(
@@ -359,9 +420,9 @@ Email: {email}
         "Руководитель предприятия _____________________ (Трухан Борис Евгеньевич)",
         normal_style
     ))
-
+    elements.append(Spacer(1, 30))
     elements.append(Paragraph(
-        "Главный бухгалтер _____________________ (Кондратюк Наталья Сергеевна)",
+        "Главный бухгалтер        _____________________ (Кондратюк Наталья Сергеевна)",
         normal_style
     ))
 
