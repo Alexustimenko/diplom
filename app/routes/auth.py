@@ -802,8 +802,24 @@ def cabinet():
     conn = get_conn()
     cur = conn.cursor()
 
+    # 🔹 Получаем тип клиента напрямую из БД
+    cur.execute("""
+        SELECT customer_type
+        FROM dbo.users
+        WHERE user_id = ?
+    """, session["user_id"])
+
+    user_row = cur.fetchone()
+
+    if user_row and user_row.customer_type == "ur":
+        customer_type_text = "Юридическое лицо"
+    else:
+        customer_type_text = "Физическое лицо"
+
+    # 🔹 Получаем заказы
     cur.execute("EXEC dbo.sp_get_user_orders ?", session["user_id"])
     rows = cur.fetchall()
+
     conn.close()
 
     orders_dict = {}
@@ -825,13 +841,12 @@ def cabinet():
             "price": r.price_at_moment
         })
 
-    # 👇 превращаем в список
     orders = list(orders_dict.values())
 
     return render_template(
         "cabinet.html",
         email=session.get("email"),
-        customer_type=session.get("customer_type"),
+        customer_type=customer_type_text,  # 👈 уже красивый текст
         orders=orders
     )
 
@@ -2873,6 +2888,8 @@ def cart_checkout():
         total=total
     )
     conn.close()
+    # очищаем корзину после успешного оформления
+    session.pop("cart", None)
 
     return redirect("/cabinet")
 from flask import jsonify
