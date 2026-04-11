@@ -50,15 +50,14 @@
             cursor:pointer;
         }
 
-        .muted{ color:#3a6b6b; font-weight:700; }
-
         .actions{ display:flex; gap:12px; flex-wrap:wrap; margin-top:14px; }
+
         .checkout-input{
-    padding:10px;
-    border:2px solid var(--cyan);
-    border-radius:10px;
-    font-weight:800;
-}
+            padding:10px;
+            border:2px solid var(--cyan);
+            border-radius:10px;
+            font-weight:800;
+        }
     </style>
 </head>
 <body>
@@ -118,76 +117,70 @@
         <form method="POST" action="/cart/checkout">
 
             <hr style="margin:30px 0;">
-
             <h3>Данные для доставки</h3>
 
             <div style="display:grid; gap:12px; max-width:600px;">
 
-    {% if customer_type == "ur" %}
+                {% if customer_type == "ur" %}
 
-        <input class="checkout-input"
-       name="company_name"
-       value="{{ company_name or '' }}"
-       placeholder="Название организации"
-       required>
+                    <input class="checkout-input"
+                           name="company_name"
+                           value="{{ company_name or '' }}"
+                           placeholder="Название организации"
+                           required>
 
-<input class="checkout-input"
-       name="unp"
-       value="{{ unp or '' }}"
-       maxlength="9"
-       pattern="\d{9}"
-       title="УНП должен содержать 9 цифр"
-       placeholder="УНП (9 цифр)"
-       required>
+                    <input class="checkout-input"
+                           name="unp"
+                           value="{{ unp or '' }}"
+                           maxlength="9"
+                           pattern="\d{9}"
+                           title="УНП должен содержать 9 цифр"
+                           placeholder="УНП (9 цифр)"
+                           required>
 
+                {% else %}
 
-    {% else %}
+                    <input class="checkout-input"
+                           name="first_name"
+                           placeholder="Имя"
+                           required>
 
-        <!-- Имя -->
-        <input class="checkout-input"
-               name="first_name"
-               placeholder="Имя"
-               required>
+                    <input class="checkout-input"
+                           name="last_name"
+                           placeholder="Фамилия"
+                           required>
 
-        <!-- Фамилия -->
-        <input class="checkout-input"
-               name="last_name"
-               placeholder="Фамилия"
-               required>
+                {% endif %}
 
-    {% endif %}
+                <input class="checkout-input"
+                       type="email"
+                       name="email"
+                       value="{{ session.get('email') }}"
+                       placeholder="Email"
+                       required>
 
-    <!-- Email -->
-    <input class="checkout-input"
-           type="email"
-           name="email"
-           value="{{ session.get('email') }}"
-           placeholder="Email"
-           required>
+                <input class="checkout-input"
+                       name="phone"
+                       placeholder="+375 (__) ___ __ __"
+                       required>
 
-    <!-- Телефон -->
-    <input class="checkout-input"
-           name="phone"
-           placeholder="+375 (__) ___ __ __"
-           pattern="\+375\s?\(?\d{2}\)?\s?\d{3}\s?\d{2}\s?\d{2}"
-           title="Введите номер в формате +375 (29) 123 45 67"
-           required>
+                <input class="checkout-input"
+                       id="addressInput"
+                       name="delivery_address"
+                       placeholder="Адрес доставки"
+                       required>
 
-    <!-- Адрес -->
-    <input class="checkout-input"
-           id="addressInput"
-           name="delivery_address"
-           placeholder="Адрес доставки"
-           required>
+                <textarea class="checkout-input"
+                          name="comment"
+                          placeholder="Комментарий к заказу"></textarea>
 
-    <!-- Комментарий -->
-    <textarea class="checkout-input"
-              name="comment"
-              placeholder="Комментарий к заказу"></textarea>
+            </div>
 
-</div>
+            {% if customer_type == "ur" %}
+                <input type="hidden" name="payment_method" value="rs">
+            {% endif %}
 
-            <!-- СПОСОБ ОПЛАТЫ -->
+            {% if customer_type != "ur" %}
             <details>
                 <summary>Способ оплаты</summary>
                 <div style="margin-top:10px; display:grid; gap:6px;">
@@ -196,20 +189,14 @@
                     <label><input type="radio" name="payment_method" value="erip"> Через ЕРИП</label>
                 </div>
             </details>
+            {% endif %}
 
-            <!-- СПОСОБ ДОСТАВКИ -->
             <details>
                 <summary>Способ доставки</summary>
                 <div style="margin-top:10px; display:grid; gap:6px;">
                     <label><input type="radio" name="delivery_method" value="pickup" checked> Самовывоз</label>
                     <label><input type="radio" name="delivery_method" value="minsk"> Курьерская доставка по Минску</label>
                     <label><input type="radio" name="delivery_method" value="belarus"> Доставка по Беларуси</label>
-
-                    <div id="belarusInfo" style="display:none; font-size:14px;">
-                        Осуществляем доставку по Республике Беларусь.
-                        Стоимость доставки уточняйте у менеджера:
-                        +375 (29) 351 45 50 или +375 (29) 751 45 50
-                    </div>
                 </div>
             </details>
 
@@ -222,44 +209,6 @@
         {% endif %}
     </div>
 </div>
-
-<script>
-const radios = document.querySelectorAll("input[name='delivery_method']");
-const addressInput = document.getElementById("addressInput");
-const belarusInfo = document.getElementById("belarusInfo");
-const baseTotal = parseFloat(document.getElementById("baseTotal")?.innerText || 0);
-
-radios.forEach(r => {
-    r.addEventListener("change", function(){
-
-        let total = baseTotal;
-
-        if(this.value === "pickup"){
-            addressInput.value = "Самовывоз";
-            addressInput.readOnly = true;  // блокируем ввод
-            belarusInfo.style.display = "none";
-        }
-
-        if(this.value === "minsk"){
-            addressInput.value = "";       // очищаем
-            addressInput.readOnly = false; // разрешаем ввод
-            belarusInfo.style.display = "none";
-
-            if(baseTotal < 140){
-                total += 10;
-            }
-        }
-
-        if(this.value === "belarus"){
-            addressInput.value = "";       // очищаем
-            addressInput.readOnly = false; // разрешаем ввод
-            belarusInfo.style.display = "block";
-        }
-
-        document.getElementById("baseTotal").innerText = total.toFixed(2);
-    });
-});
-</script>
 
 </body>
 </html>
