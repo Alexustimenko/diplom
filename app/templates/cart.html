@@ -123,20 +123,68 @@
 
             <div style="display:grid; gap:12px; max-width:600px;">
 
-                <input class="checkout-input" name="first_name" placeholder="Имя" required>
-                <input class="checkout-input" name="last_name" placeholder="Фамилия" required>
+    {% if customer_type == "ur" %}
 
-                <input class="checkout-input" name="email" value="{{ session.get('email') }}" required>
+        <!-- Название организации -->
+        <input class="checkout-input"
+               name="company_name"
+               placeholder="Название организации"
+               required>
 
-                <input class="checkout-input" id="phoneInput" name="phone"
-                       placeholder="+375 (__) ___ __ __" required>
+        <!-- УНП (9 цифр РБ) -->
+        <input class="checkout-input"
+               name="unp"
+               maxlength="9"
+               pattern="\d{9}"
+               title="УНП должен содержать 9 цифр"
+               placeholder="УНП (9 цифр)"
+               required>
 
-                <input class="checkout-input" id="addressInput" name="delivery_address"
-                       placeholder="Адрес доставки" required>
+    {% else %}
 
-                <textarea class="checkout-input" name="comment"
-                          placeholder="Комментарий к заказу"></textarea>
-            </div>
+        <!-- Имя -->
+        <input class="checkout-input"
+               name="first_name"
+               placeholder="Имя"
+               required>
+
+        <!-- Фамилия -->
+        <input class="checkout-input"
+               name="last_name"
+               placeholder="Фамилия"
+               required>
+
+    {% endif %}
+
+    <!-- Email -->
+    <input class="checkout-input"
+           type="email"
+           name="email"
+           value="{{ session.get('email') }}"
+           placeholder="Email"
+           required>
+
+    <!-- Телефон -->
+    <input class="checkout-input"
+           name="phone"
+           placeholder="+375 (__) ___ __ __"
+           pattern="\+375\s?\(?\d{2}\)?\s?\d{3}\s?\d{2}\s?\d{2}"
+           title="Введите номер в формате +375 (29) 123 45 67"
+           required>
+
+    <!-- Адрес -->
+    <input class="checkout-input"
+           id="addressInput"
+           name="delivery_address"
+           placeholder="Адрес доставки"
+           required>
+
+    <!-- Комментарий -->
+    <textarea class="checkout-input"
+              name="comment"
+              placeholder="Комментарий к заказу"></textarea>
+
+</div>
 
             <!-- СПОСОБ ОПЛАТЫ -->
             <details>

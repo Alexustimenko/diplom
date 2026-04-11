@@ -177,6 +177,221 @@ def send_ready_email(user_email, order_id, delivery_method):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(sender, password)
         server.send_message(msg)
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+from datetime import datetime, timedelta
+import os
+
+
+def number_to_words(n):
+    # временная простая версия (можем позже сделать правильную пропись)
+    return f"{n:.2f} белорусских рублей"
+
+
+def generate_invoice_pdf_and_send(order_id, email, phone, unp, company_name, items, price_map):
+
+    # ========= создаем папку temp если нет =========
+    if not os.path.exists("temp"):
+        os.makedirs("temp")
+
+    # ========= регистрируем кириллический шрифт =========
+    font_path = os.path.join("fonts", "DejaVuSans.ttf")
+    pdfmetrics.registerFont(TTFont("DejaVu", font_path))
+
+    filename = f"invoice_{order_id}.pdf"
+    filepath = os.path.join("temp", filename)
+
+    doc = SimpleDocTemplate(filepath, pagesize=A4)
+    elements = []
+
+    # ========= стили =========
+    styles = getSampleStyleSheet()
+
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontName='DejaVu',
+        fontSize=10,
+        leading=12
+    )
+
+    bold_style = ParagraphStyle(
+        'CustomBold',
+        parent=styles['Normal'],
+        fontName='DejaVu',
+        fontSize=10,
+        leading=12
+    )
+
+    today = datetime.now()
+    valid_until = today + timedelta(days=5)
+
+    # =============================
+    # 🔷 ВЕРХНЯЯ ТАБЛИЦА 2x3
+    # =============================
+
+    seller_text = """
+ОДО "РОЛМАРК-ТРЕЙД"<br/>
+220099, г. Минск, ул. Лейтенанта Кижеватова, д.8, пом.1<br/>
+р/с BY86TECN30121248300010000000 Банк ОАО "Технобанк"<br/>
+220002, г.Минск, ул. Кропоткина, 44<br/>
+Код TECNBY22<br/>
+тел. 8 017 348 99 82<br/>
+8 (029) 361 65 65, 8 (033) 361 65 65<br/>
+УНП 190640194
+"""
+
+    buyer_text = f"""
+{company_name}<br/>
+УНП {unp}<br/>
+Телефон: {phone}<br/>
+Email: {email}
+"""
+
+    header_data = [
+        [
+            Paragraph("<b>Продавец и его адрес:</b>", normal_style),
+            Paragraph(seller_text, normal_style),
+            Paragraph(f"<b>СЧЕТ № {order_id}<br/>от {today.strftime('%d.%m.%Y')}</b>", normal_style)
+        ],
+        [
+            Paragraph("<b>Покупатель и его адрес:</b>", normal_style),
+            Paragraph(buyer_text, normal_style),
+            ""
+        ]
+    ]
+
+    header_table = Table(header_data, colWidths=[40*mm, 90*mm, 40*mm])
+    header_table.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('SPAN', (1, 1), (2, 1)),  # объединяем ячейки
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+
+    elements.append(header_table)
+    elements.append(Spacer(1, 15))
+
+    # =============================
+    # 🔷 ТАБЛИЦА ТОВАРОВ
+    # =============================
+
+    data = [
+        ["Предмет счета", "Ед. изм.", "Кол-во", "Цена",
+         "Отпускная стоимость", "Ставка НДС", "Сумма НДС", "С НДС"]
+    ]
+
+    total_cost = 0
+    total_nds = 0
+    total_with_nds = 0
+
+    for pid_str, qty in items.items():
+        pid = int(pid_str)
+        qty = int(qty)
+        price = price_map.get(pid, 0)
+
+        cost = price * qty
+        nds = cost * 0.2
+        with_nds = cost + nds
+
+        total_cost += cost
+        total_nds += nds
+        total_with_nds += with_nds
+
+        data.append([
+            f"Товар {pid}",
+            "шт.",
+            qty,
+            f"{price:.2f}",
+            f"{cost:.2f}",
+            "20%",
+            f"{nds:.2f}",
+            f"{with_nds:.2f}"
+        ])
+
+    data.append([
+        "ИТОГО", "", "", "",
+        f"{total_cost:.2f}",
+        "",
+        f"{total_nds:.2f}",
+        f"{total_with_nds:.2f}"
+    ])
+
+    table = Table(data, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('FONTNAME', (0, 0), (-1, -1), 'DejaVu'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9)
+    ]))
+
+    elements.append(table)
+    elements.append(Spacer(1, 15))
+
+    # =============================
+    # 🔷 ИТОГИ ПРОПИСЬЮ
+    # =============================
+
+    elements.append(Paragraph(
+        f"<b>Сумма НДС:</b> {total_nds:.2f} ({number_to_words(total_nds)})",
+        normal_style
+    ))
+
+    elements.append(Paragraph(
+        f"<b>Всего:</b> {total_with_nds:.2f} ({number_to_words(total_with_nds)})",
+        normal_style
+    ))
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph(
+        f"Обращаем Ваше внимание: Счет действителен до {valid_until.strftime('%d.%m.%Y')}",
+        normal_style
+    ))
+
+    elements.append(Spacer(1, 30))
+
+    elements.append(Paragraph(
+        "Руководитель предприятия _____________________ (Трухан Борис Евгеньевич)",
+        normal_style
+    ))
+
+    elements.append(Paragraph(
+        "Главный бухгалтер _____________________ (Кондратюк Наталья Сергеевна)",
+        normal_style
+    ))
+
+    doc.build(elements)
+
+    send_invoice_email(email, filepath, order_id)
+
+    os.remove(filepath)
+from email.message import EmailMessage
+def send_invoice_email(user_email, filepath, order_id):
+
+    sender = "ustimenko.lesha@gmail.com"
+    password = "fmcoakbuddnebowc"
+
+    msg = EmailMessage()
+    msg["Subject"] = f"Счет №{order_id}"
+    msg["From"] = sender
+    msg["To"] = user_email
+    msg.set_content("Во вложении счет.")
+
+    with open(filepath, "rb") as f:
+        file_data = f.read()
+        msg.add_attachment(file_data,
+                           maintype="application",
+                           subtype="pdf",
+                           filename=os.path.basename(filepath))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender, password)
+        server.send_message(msg)
 def _require_admin():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
@@ -2323,14 +2538,25 @@ def cart():
     items = []
     total = 0
 
-    if ids:
-        conn = get_conn()
-        cur = conn.cursor()
+    # 🔷 Получаем customer_type ВСЕГДА (вне условий)
+    conn = get_conn()
+    cur = conn.cursor()
 
+    cur.execute(
+        "SELECT customer_type FROM dbo.users WHERE user_id = ?",
+        session["user_id"]
+    )
+    row = cur.fetchone()
+    customer_type = row.customer_type if row else "fiz"
+
+    # 🔷 Если есть товары — получаем их
+    if ids:
         placeholders = ",".join(["?"] * len(ids))
-        cur.execute(f"SELECT * FROM dbo.vw_products WHERE product_id IN ({placeholders})", *ids)
+        cur.execute(
+            f"SELECT * FROM dbo.vw_products WHERE product_id IN ({placeholders})",
+            *ids
+        )
         rows = cur.fetchall()
-        conn.close()
 
         by_id = {int(r.product_id): r for r in rows}
 
@@ -2353,8 +2579,14 @@ def cart():
                 "line_total": line
             })
 
-    return render_template("cart.html", items=items, total=total)
+    conn.close()
 
+    return render_template(
+        "cart.html",
+        items=items,
+        total=total,
+        customer_type=customer_type
+    )
 @auth_bp.route("/cart/add/<int:pid>", methods=["POST"])
 def cart_add(pid):
     gate = _require_login()
@@ -2449,13 +2681,29 @@ def cart_checkout():
         pid = int(pid_str)
         q = int(qty)
         total += price_map.get(pid, 0.0) * q
+        # ============================
+        # Определяем тип клиента
+        # ============================
+
+        cur.execute("SELECT customer_type FROM dbo.users WHERE user_id = ?", user_id)
+        row = cur.fetchone()
+        customer_type = row.customer_type if row else "fiz"
+
 
     # ============================
     # ✅ НОВЫЕ ПОЛЯ
     # ============================
 
-    first_name = request.form.get("first_name")
-    last_name = request.form.get("last_name")
+    if customer_type == "ur":
+        company_name = request.form.get("company_name")
+        unp = request.form.get("unp")
+        first_name = None
+        last_name = None
+    else:
+        first_name = request.form.get("first_name")
+        last_name = request.form.get("last_name")
+        company_name = None
+        unp = None
     email = request.form.get("email")
     phone = request.form.get("phone")
     delivery_address = request.form.get("delivery_address")
@@ -2516,6 +2764,20 @@ def cart_checkout():
         )
 
     conn.commit()
+    if customer_type == "ur":
+        unp = request.form.get("unp")
+        email = request.form.get("email")
+        phone = request.form.get("phone")
+
+        generate_invoice_pdf_and_send(
+            order_id=order_id,
+            email=email,
+            phone=phone,
+            unp=unp,
+            items=cart,
+            company_name=company_name,
+            price_map=price_map
+        )
     # собираем товары для письма
     email_items = []
 
