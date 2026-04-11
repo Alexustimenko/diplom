@@ -162,7 +162,7 @@ def send_ready_email(user_email, order_id, delivery_method):
         body = f"""
 Ваш заказ №{order_id} готов к выдаче.
 
-Заберите его.
+Заказ находится по адресу  г. Минск ул.Маяковского, д.26, каб.1
 """
     else:
         body = f"""
