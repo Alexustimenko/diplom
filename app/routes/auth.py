@@ -671,31 +671,83 @@ def image_by_id(image_id):
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        if not is_valid_email_strict(email):
-            return render_template("register.html", error="Введите корректный email (пример: name@gmail.com)")
 
+        email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         customer_type = request.form.get("customer_type", "fiz").strip()
 
-        if not email or not password:
-            return render_template("register.html", error="Заполни email и пароль")
+        # Проверка email
+        if not is_valid_email_strict(email):
+            return render_template(
+                "register.html",
+                error="Введите корректный email (пример: name@gmail.com)"
+            )
 
-        hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        if not email or not password:
+            return render_template(
+                "register.html",
+                error="Заполните email и пароль"
+            )
+
+        # 🔹 Дополнительные поля для юрлица
+        if customer_type == "ur":
+            company_name = request.form.get("company_name", "").strip()
+            unp = request.form.get("unp", "").strip()
+
+            if not company_name:
+                return render_template(
+                    "register.html",
+                    error="Введите наименование организации"
+                )
+
+            if not unp or not unp.isdigit() or len(unp) != 9:
+                return render_template(
+                    "register.html",
+                    error="УНП должен содержать 9 цифр"
+                )
+        else:
+            company_name = None
+            unp = None
+
+        # 🔹 Хешируем пароль
+        hashed = bcrypt.hashpw(
+            password.encode("utf-8"),
+            bcrypt.gensalt()
+        ).decode("utf-8")
 
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute("EXEC dbo.sp_register_user ?, ?, ?", email, hashed, customer_type)
+
+        # ⚠ Обновленная процедура должна принимать 5 параметров
+        cur.execute(
+            "EXEC dbo.sp_register_user ?, ?, ?, ?, ?",
+            email,
+            hashed,
+            customer_type,
+            company_name,
+            unp
+        )
+
         result = cur.fetchone()[0]
         conn.commit()
         conn.close()
 
         if result == -1:
-            return render_template("register.html", error="Пользователь уже существует")
-        if result == -2:
-            return render_template("register.html", error="Неверный тип клиента")
+            return render_template(
+                "register.html",
+                error="Пользователь уже существует"
+            )
 
-        return render_template("register.html", success="Аккаунт создан! Теперь можно входить.")
+        if result == -2:
+            return render_template(
+                "register.html",
+                error="Неверный тип клиента"
+            )
+
+        return render_template(
+            "register.html",
+            success="Аккаунт создан! Теперь можно входить."
+        )
 
     return render_template("register.html")
 
@@ -2538,16 +2590,21 @@ def cart():
     items = []
     total = 0
 
-    # 🔷 Получаем customer_type ВСЕГДА (вне условий)
     conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute(
-        "SELECT customer_type FROM dbo.users WHERE user_id = ?",
-        session["user_id"]
-    )
+    # 🔷 Получаем данные пользователя (тип + реквизиты)
+    cur.execute("""
+        SELECT customer_type, company_name, unp
+        FROM dbo.users
+        WHERE user_id = ?
+    """, session["user_id"])
+
     row = cur.fetchone()
+
     customer_type = row.customer_type if row else "fiz"
+    company_name = row.company_name if row else None
+    unp = row.unp if row else None
 
     # 🔷 Если есть товары — получаем их
     if ids:
@@ -2585,7 +2642,9 @@ def cart():
         "cart.html",
         items=items,
         total=total,
-        customer_type=customer_type
+        customer_type=customer_type,
+        company_name=company_name,
+        unp=unp
     )
 @auth_bp.route("/cart/add/<int:pid>", methods=["POST"])
 def cart_add(pid):

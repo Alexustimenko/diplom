@@ -125,20 +125,21 @@
 
     {% if customer_type == "ur" %}
 
-        <!-- Название организации -->
         <input class="checkout-input"
-               name="company_name"
-               placeholder="Название организации"
-               required>
+       name="company_name"
+       value="{{ company_name or '' }}"
+       placeholder="Название организации"
+       required>
 
-        <!-- УНП (9 цифр РБ) -->
-        <input class="checkout-input"
-               name="unp"
-               maxlength="9"
-               pattern="\d{9}"
-               title="УНП должен содержать 9 цифр"
-               placeholder="УНП (9 цифр)"
-               required>
+<input class="checkout-input"
+       name="unp"
+       value="{{ unp or '' }}"
+       maxlength="9"
+       pattern="\d{9}"
+       title="УНП должен содержать 9 цифр"
+       placeholder="УНП (9 цифр)"
+       required>
+
 
     {% else %}
 
