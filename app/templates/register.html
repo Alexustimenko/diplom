@@ -32,10 +32,7 @@
             font-weight: bold;
         }
         button:hover { opacity: 0.9; }
-        .error { margin-top: 10px; color: red; text-align: center; }
-        .success { margin-top: 10px; color: green; text-align: center; font-weight: bold; }
-        .link { margin-top: 12px; text-align: center; }
-        .link a { color: #CF1B03; font-weight: bold; text-decoration: none; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -43,36 +40,47 @@
 <div class="container">
     <h2>Registration</h2>
     <form method="POST">
-        <input
-  type="email"
-  name="email"
-  placeholder="Email"
-  required
-  pattern="^[A-Za-z0-9](?:[A-Za-z0-9._%+-]{0,62}[A-Za-z0-9])?@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+\.[A-Za-z]{2,}$"
-  title="Введите корректный email, например name@gmail.com"
-/>
+
+        <input type="email" name="email" placeholder="Email" required>
         <input type="password" name="password" placeholder="Password" required>
 
-        <select name="customer_type">
+        <select name="customer_type" id="customerType" onchange="toggleFields()">
             <option value="fiz">Физическое лицо</option>
             <option value="ur">Юридическое лицо</option>
         </select>
 
+        <!-- Блок для юрлица -->
+        <div id="urFields" class="hidden">
+            <input type="text"
+                   name="company_name"
+                   placeholder="Наименование организации">
+
+            <input type="text"
+                   name="unp"
+                   maxlength="9"
+                   pattern="\d{9}"
+                   title="УНП должен содержать 9 цифр"
+                   placeholder="УНП (9 цифр)">
+        </div>
+
         <button type="submit">Register</button>
     </form>
-
-    {% if error %}
-        <div class="error">{{ error }}</div>
-    {% endif %}
-
-    {% if success %}
-        <div class="success">{{ success }}</div>
-    {% endif %}
-
-    <div class="link">
-        <a href="/login">Уже есть аккаунт? Войти</a>
-    </div>
 </div>
+
+<script>
+function toggleFields() {
+    const type = document.getElementById("customerType").value;
+    const block = document.getElementById("urFields");
+
+    if (type === "ur") {
+        block.classList.remove("hidden");
+        block.querySelectorAll("input").forEach(i => i.required = true);
+    } else {
+        block.classList.add("hidden");
+        block.querySelectorAll("input").forEach(i => i.required = false);
+    }
+}
+</script>
 
 </body>
 </html>
