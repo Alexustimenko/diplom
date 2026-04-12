@@ -1082,6 +1082,12 @@ def admin():
                     row = cur.fetchone()
                     if row:
                         send_ready_email(row.email, order_id, row.delivery_method)
+                current_filter = request.form.get("current_filter")
+
+                if current_filter:
+                    return redirect(url_for("auth.admin", status=current_filter))
+                else:
+                    return redirect(url_for("auth.admin"))
 
             # ---------- PRODUCTS ----------
             elif action == "add_product":
@@ -1202,6 +1208,7 @@ def admin():
     orders_admin = cur.fetchall()
 
     conn.close()
+    status_filter = request.args.get("status")
 
     return render_template(
         "admin.html",
@@ -1211,6 +1218,7 @@ def admin():
         products=products,
         tab="products",
         error=error,
+        selected_status=status_filter,
         success=success
 
     )

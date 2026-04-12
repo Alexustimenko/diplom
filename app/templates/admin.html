@@ -751,6 +751,34 @@ th:last-child, td:last-child{
 
   <div style="margin-top:12px;">
 
+    <!-- 🔹 ФИЛЬТР -->
+    <form method="GET" style="margin-bottom:15px;">
+      <label style="font-weight:bold;">Фильтр по статусу:</label>
+
+      <select name="status"
+              onchange="this.form.submit()"
+              style="padding:8px; border-radius:8px;">
+
+        <option value="">Все</option>
+
+        <option value="Ожидает обработки"
+          {% if selected_status == "Ожидает обработки" %}selected{% endif %}>
+          Ожидает обработки
+        </option>
+
+        <option value="Обработан"
+          {% if selected_status == "Обработан" %}selected{% endif %}>
+          Обработан
+        </option>
+
+        <option value="Готов к выдаче"
+          {% if selected_status == "Готов к выдаче" %}selected{% endif %}>
+          Готов к выдаче
+        </option>
+
+      </select>
+    </form>
+
     <table>
       <tr>
         <th>ID</th>
@@ -762,6 +790,7 @@ th:last-child, td:last-child{
       </tr>
 
       {% for o in orders_admin %}
+        {% if not selected_status or o.status == selected_status %}
       <tr>
         <td>{{ o.order_id }}</td>
         <td>{{ o.email }}</td>
@@ -787,11 +816,23 @@ th:last-child, td:last-child{
           <form method="POST" class="row">
             <input type="hidden" name="action" value="update_order_status">
             <input type="hidden" name="order_id" value="{{ o.order_id }}">
+            <input type="hidden" name="current_filter" value="{{ selected_status }}">
 
             <select name="new_status">
-              <option>Ожидает обработки</option>
-              <option>Обработан</option>
-              <option>Готов к выдаче</option>
+              <option value="Ожидает обработки"
+                {% if o.status == "Ожидает обработки" %}selected{% endif %}>
+                Ожидает обработки
+              </option>
+
+              <option value="Обработан"
+                {% if o.status == "Обработан" %}selected{% endif %}>
+                Обработан
+              </option>
+
+              <option value="Готов к выдаче"
+                {% if o.status == "Готов к выдаче" %}selected{% endif %}>
+                Готов к выдаче
+              </option>
             </select>
 
             <button class="btn primary" type="submit">
@@ -800,7 +841,9 @@ th:last-child, td:last-child{
           </form>
         </td>
       </tr>
+        {% endif %}
       {% endfor %}
+
     </table>
 
   </div>
