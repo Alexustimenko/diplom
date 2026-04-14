@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Прайс-лист</title>
+    <style>
+        body {
+            background:#FAF7E7;
+            font-family:Arial, sans-serif;
+            margin:0;
+        }
+
+        .container {
+            max-width:900px;
+            margin:40px auto;
+            background:white;
+            padding:30px;
+            border-radius:15px;
+            box-shadow:0 8px 20px rgba(0,0,0,.15);
+        }
+
+        h1 {
+            text-align:center;
+            color:#CF1B03;
+            margin-bottom:10px;
+        }
+
+        .date {
+            text-align:center;
+            font-weight:bold;
+            margin-bottom:30px;
+        }
+
+        table {
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th, td {
+            padding:12px;
+            border-bottom:1px solid #ddd;
+        }
+
+        th {
+            background:#CF1B03;
+            color:white;
+            text-align:left;
+        }
+
+        .export-btn {
+            display:inline-block;
+            margin-top:20px;
+            padding:10px 15px;
+            background:#CF1B03;
+            color:white;
+            border-radius:10px;
+            text-decoration:none;
+            font-weight:bold;
+        }
+
+        .export-btn:hover {
+            opacity:.9;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>ПРАЙС-ЛИСТ</h1>
+
+    <div class="date">
+        Прайс-лист составлен на: {{ today }}
+    </div>
+
+    <table>
+        <tr>
+            <th>Наименование товара</th>
+            <th>Цена (Бел.руб.)</th>
+        </tr>
+
+        {% for p in products %}
+        <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ "%.2f"|format(p.price) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <a href="/price-list/export" class="export-btn">
+        Экспорт в Excel
+    </a>
+
+</div>
+
+</body>
+</html>

@@ -63,6 +63,70 @@ def is_valid_email_strict(email: str) -> bool:
             return False
 
     return True
+def generate_order_pdf(order_id, items, total):
+
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.pdfbase import pdfmetrics
+    from datetime import datetime
+    import os
+
+    if not os.path.exists("temp"):
+        os.makedirs("temp")
+
+    font_path = os.path.join("fonts", "DejaVuSans.ttf")
+    pdfmetrics.registerFont(TTFont("DejaVu", font_path))
+
+    filename = f"order_{order_id}.pdf"
+    filepath = os.path.join("temp", filename)
+
+    doc = SimpleDocTemplate(filepath, pagesize=A4)
+    elements = []
+
+    styles = getSampleStyleSheet()
+    normal = ParagraphStyle(
+        'NormalDeja',
+        parent=styles['Normal'],
+        fontName='DejaVu',
+        fontSize=10
+    )
+
+    # Заголовок
+    elements.append(Paragraph(f"<b>Заказ № {order_id}</b>", normal))
+    elements.append(Paragraph(f"Дата: {datetime.now().strftime('%d.%m.%Y')}", normal))
+    elements.append(Spacer(1, 15))
+
+    # Таблица
+    data = [["Товар", "Цена", "Кол-во", "Сумма"]]
+
+    for item in items:
+        line_total = item["price"] * item["qty"]
+        data.append([
+            item["name"],
+            f"{item['price']:.2f}",
+            item["qty"],
+            f"{line_total:.2f}"
+        ])
+
+    data.append(["", "", "ИТОГО:", f"{total:.2f}"])
+
+    table = Table(data, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('FONTNAME', (0, 0), (-1, -1), 'DejaVu'),
+        ('ALIGN', (1, 1), (-1, -1), 'RIGHT')
+    ]))
+
+    elements.append(table)
+
+    doc.build(elements)
+
+    return filepath
 
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -74,7 +138,9 @@ def send_order_created_email(user_email,
                              phone,
                              delivery_type,
                              items,
-                             total):
+                             total,
+                             customer_type):
+    from email.mime.application import MIMEApplication
 
     sender = "ustimenko.lesha@gmail.com"
     password = "fmcoakbuddnebowc"
@@ -140,6 +206,17 @@ def send_order_created_email(user_email,
     msg["To"] = user_email
 
     msg.attach(MIMEText(html, "html"))
+
+    if customer_type == "fiz":
+        pdf_path = generate_order_pdf(order_id, items, total)
+
+        with open(pdf_path, "rb") as f:
+            part = MIMEApplication(f.read(), Name=f"Заказ_{order_id}.pdf")
+
+        part['Content-Disposition'] = f'attachment; filename="Заказ_{order_id}.pdf"'
+        msg.attach(part)
+
+        os.remove(pdf_path)
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(sender, password)
@@ -1207,6 +1284,13 @@ def admin():
     cur.execute("EXEC dbo.sp_get_all_orders_admin")
     orders_admin = cur.fetchall()
 
+    user_filter = request.args.get("user_type")
+    if user_filter:
+        cur.execute("EXEC dbo.sp_get_all_users_admin ?", user_filter)
+    else:
+        cur.execute("EXEC dbo.sp_get_all_users_admin NULL")
+
+    users_admin = cur.fetchall()
     conn.close()
     status_filter = request.args.get("status")
 
@@ -1216,6 +1300,8 @@ def admin():
         orders_admin=orders_admin,
         categories=categories,
         products=products,
+        users_admin=users_admin,
+        selected_user_type=user_filter,
         tab="products",
         error=error,
         selected_status=status_filter,
@@ -2954,6 +3040,7 @@ def cart_checkout():
         phone=request.form.get("phone"),
         delivery_type=dlvr,
         items=email_items,
+        customer_type=customer_type,
         total=total
     )
     conn.close()
@@ -3334,4 +3421,146 @@ def smart_pick():
         suitable=suitable,
         unsuitable=unsuitable,
         parts_mode=parts_mode
+    )
+
+@auth_bp.route("/price-list")
+def price_list():
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("EXEC dbo.sp_get_price_list")
+    products = cur.fetchall()
+
+    conn.close()
+
+    today = datetime.now().strftime("%d.%m.%Y")
+
+    return render_template(
+        "price_list.html",
+        products=products,
+        today=today
+    )
+@auth_bp.route("/price-list/export")
+def export_price_list():
+
+    from flask import current_app, send_file
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.drawing.image import Image as XLImage
+    from datetime import datetime
+    import io
+    import os
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("EXEC dbo.sp_get_price_list")
+    products = cur.fetchall()
+
+    conn.close()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Прайс-лист"
+
+    today_str = datetime.now().strftime("%d.%m.%Y")
+
+    # =============================
+    # 🔷 ЛОГОТИП (ТВОЙ ПУТЬ)
+    # =============================
+
+    logo_path = os.path.join(
+        current_app.root_path,
+        "app",
+        "static",
+        "rolmark_logo.png"
+    )
+
+    if os.path.exists(logo_path):
+        img = XLImage(logo_path)
+        img.width = 200
+        img.height = 90
+        ws.add_image(img, "A1")
+
+    # =============================
+    # 🔷 ЗАГОЛОВОК
+    # =============================
+
+    ws.merge_cells("A6:B6")
+    ws["A6"] = "ПРАЙС-ЛИСТ"
+    ws["A6"].font = Font(size=16, bold=True)
+    ws["A6"].alignment = Alignment(horizontal="center", vertical="center")
+
+    ws.merge_cells("A7:B7")
+    ws["A7"] = f"Прайс-лист составлен на: {today_str}"
+    ws["A7"].alignment = Alignment(horizontal="center")
+
+    # =============================
+    # 🔷 ШАПКА ТАБЛИЦЫ
+    # =============================
+
+    ws["A9"] = "Наименование товара"
+    ws["B9"] = "Цена (Бел.руб.)"
+
+    ws["A9"].font = Font(bold=True)
+    ws["B9"].font = Font(bold=True)
+
+    ws["A9"].alignment = Alignment(horizontal="center")
+    ws["B9"].alignment = Alignment(horizontal="center")
+
+    # =============================
+    # 🔷 ДАННЫЕ
+    # =============================
+
+    row = 10
+    for p in products:
+        ws[f"A{row}"] = p.name
+        ws[f"B{row}"] = float(p.price)
+        ws[f"B{row}"].alignment = Alignment(horizontal="right")
+        row += 1
+
+    # =============================
+    # 🔷 ГРАНИЦЫ
+    # =============================
+
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    for r in ws.iter_rows(min_row=9, max_row=row-1, min_col=1, max_col=2):
+        for cell in r:
+            cell.border = thin_border
+
+    # =============================
+    # 🔷 АВТОШИРИНА
+    # =============================
+
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column
+
+        for cell in col:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+
+        ws.column_dimensions[get_column_letter(column)].width = max_length + 3
+
+    # =============================
+    # 🔷 ОТПРАВКА
+    # =============================
+
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name=f"price_list_{today_str}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )

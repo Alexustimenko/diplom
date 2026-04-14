@@ -848,6 +848,57 @@ th:last-child, td:last-child{
 
   </div>
 </details>
+<details class="card">
+  <summary class="collapse-head" style="cursor:pointer;">
+    <div class="section-title" style="margin:0; width:100%;">
+      <h2 style="margin:0;">Пользователи</h2>
+    </div>
+  </summary>
+
+  <div style="margin-top:12px;">
+
+    <!-- 🔹 ФИЛЬТР -->
+    <form method="GET" style="margin-bottom:15px;">
+      <label style="font-weight:bold;">Фильтр по типу клиента:</label>
+
+      <select name="user_type"
+              onchange="this.form.submit()"
+              style="padding:8px; border-radius:8px;">
+
+        <option value="">Все</option>
+
+        <option value="fiz"
+          {% if selected_user_type == "fiz" %}selected{% endif %}>
+          Физические лица
+        </option>
+
+        <option value="ur"
+          {% if selected_user_type == "ur" %}selected{% endif %}>
+          Юридические лица
+        </option>
+
+      </select>
+    </form>
+
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>Email</th>
+        <th>Тип клиента</th>
+      </tr>
+
+      {% for u in users_admin %}
+      <tr>
+        <td>{{ u.user_id }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.customer_type_text }}</td>
+      </tr>
+      {% endfor %}
+
+    </table>
+
+  </div>
+</details>
 
         {% endif %}
     </div>
