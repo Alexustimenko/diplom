@@ -881,21 +881,52 @@ th:last-child, td:last-child{
     </form>
 
     <table>
-      <tr>
-        <th>ID</th>
-        <th>Email</th>
-        <th>Тип клиента</th>
-      </tr>
+  <tr>
+    <th>ID</th>
+    <th>Email</th>
+    <th>Тип клиента</th>
+    <th>Статус</th>
+    <th>Действия</th>
+  </tr>
 
-      {% for u in users_admin %}
-      <tr>
-        <td>{{ u.user_id }}</td>
-        <td>{{ u.email }}</td>
-        <td>{{ u.customer_type_text }}</td>
-      </tr>
-      {% endfor %}
+  {% for u in users_admin %}
+  <tr>
+    <td>{{ u.user_id }}</td>
+    <td>{{ u.email }}</td>
+    <td>{{ u.customer_type_text }}</td>
 
-    </table>
+    <td>
+      {% if u.is_blocked %}
+        <span style="color:red; font-weight:bold;">Заблокирован</span>
+      {% else %}
+        <span style="color:green; font-weight:bold;">Активен</span>
+      {% endif %}
+    </td>
+
+    <td>
+      <form method="POST" style="display:inline;">
+        <input type="hidden" name="action" value="block_user">
+        <input type="hidden" name="user_id" value="{{ u.user_id }}">
+        <button type="submit"
+                {% if u.is_blocked %}disabled{% endif %}
+                style="background:#CF1B03;color:white;border:none;padding:6px 10px;border-radius:6px;">
+            Заблокировать
+        </button>
+      </form>
+
+      <form method="POST" style="display:inline;">
+        <input type="hidden" name="action" value="unblock_user">
+        <input type="hidden" name="user_id" value="{{ u.user_id }}">
+        <button type="submit"
+                {% if not u.is_blocked %}disabled{% endif %}
+                style="background:#33CCCC;color:white;border:none;padding:6px 10px;border-radius:6px;">
+            Разблокировать
+        </button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
 
   </div>
 </details>
