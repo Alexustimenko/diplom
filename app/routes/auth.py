@@ -264,6 +264,28 @@ from reportlab.pdfbase import pdfmetrics
 from datetime import datetime, timedelta
 import os
 
+def send_user_block_email(email, blocked=True):
+
+    sender = "ustimenko.lesha@gmail.com"
+    password = "fmcoakbuddnebowc"
+
+    if blocked:
+        subject = "Аккаунт заблокирован"
+        text = "Вы были заблокированы нашим администратором за нарушение правил."
+    else:
+        subject = "Аккаунт разблокирован"
+        text = "Вы были разблокированы нашим администратором."
+
+    msg = MIMEMultipart()
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = email
+
+    msg.attach(MIMEText(text, "plain"))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender, password)
+        server.send_message(msg)
 
 def number_to_words(n):
     # временная простая версия (можем позже сделать правильную пропись)
@@ -913,6 +935,9 @@ def login():
 
         if not row:
             return render_template("login.html", error="Ошибка входа")
+        if row.is_blocked:
+            return render_template("login.html",
+                                   error="Ваш аккаунт заблокирован администратором")
 
         if not bcrypt.checkpw(password.encode(), row.password_hash.encode()):
             return render_template("login.html", error="Ошибка входа")
@@ -1165,6 +1190,36 @@ def admin():
                     return redirect(url_for("auth.admin", status=current_filter))
                 else:
                     return redirect(url_for("auth.admin"))
+            elif action == "block_user":
+
+                user_id = int(request.form["user_id"])
+
+                cur.execute("UPDATE dbo.users SET is_blocked = 1 WHERE user_id = ?", user_id)
+                conn.commit()
+
+                cur.execute("SELECT email FROM dbo.users WHERE user_id = ?", user_id)
+                row = cur.fetchone()
+
+                if row:
+                    send_user_block_email(row.email, blocked=True)
+
+                success = "Пользователь заблокирован"
+
+
+            elif action == "unblock_user":
+
+                user_id = int(request.form["user_id"])
+
+                cur.execute("UPDATE dbo.users SET is_blocked = 0 WHERE user_id = ?", user_id)
+                conn.commit()
+
+                cur.execute("SELECT email FROM dbo.users WHERE user_id = ?", user_id)
+                row = cur.fetchone()
+
+                if row:
+                    send_user_block_email(row.email, blocked=False)
+
+                success = "Пользователь разблокирован"
 
             # ---------- PRODUCTS ----------
             elif action == "add_product":
@@ -1285,10 +1340,8 @@ def admin():
     orders_admin = cur.fetchall()
 
     user_filter = request.args.get("user_type")
-    if user_filter:
-        cur.execute("EXEC dbo.sp_get_all_users_admin ?", user_filter)
-    else:
-        cur.execute("EXEC dbo.sp_get_all_users_admin NULL")
+
+    cur.execute("EXEC dbo.sp_get_all_users_admin ?", user_filter)
 
     users_admin = cur.fetchall()
     conn.close()
