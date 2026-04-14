@@ -3,42 +3,75 @@
 <head>
     <title>Register</title>
     <style>
-        body { background-color: #FAF7E7; font-family: Arial, sans-serif; }
-        .container {
-            width: 400px;
-            margin: 100px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-        }
-        h2 { text-align: center; color: #CF1B03; }
-        input, select {
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-            border: 2px solid #CF1B03;
-            border-radius: 6px;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 15px;
-            background-color: #CF1B03;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:hover { opacity: 0.9; }
-        .hidden { display: none; }
-    </style>
+body { background-color: #FAF7E7; font-family: Arial, sans-serif; }
+
+.container {
+    width: 400px;
+    margin: 100px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+
+h2 { text-align: center; color: #CF1B03; }
+
+/* 🔥 ГЛАВНОЕ ИСПРАВЛЕНИЕ */
+input, select, button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    border: 2px solid #CF1B03;
+    border-radius: 6px;
+    box-sizing: border-box; /* ← вот это делает одинаковую ширину */
+    font-size: 14px;
+}
+
+/* select чуть выравниваем по высоте */
+select {
+    appearance: none;
+}
+
+/* кнопка */
+button {
+    margin-top: 15px;
+    background-color: #CF1B03;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.hidden { display: none; }
+
+.checkbox-block {
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+.checkbox-block input {
+    width: auto;
+    margin-right: 6px;
+}
+
+.link { margin-top: 14px; text-align: center; }
+.link a { color: #CF1B03; font-weight: bold; text-decoration: none; }
+</style>
 </head>
 <body>
 
 <div class="container">
     <h2>Registration</h2>
+
     <form method="POST">
 
         <input type="email" name="email" placeholder="Email" required>
@@ -63,8 +96,43 @@
                    placeholder="УНП (9 цифр)">
         </div>
 
-        <button type="submit">Register</button>
+        <!-- Политики -->
+        <div class="link">
+            <p>
+                <a  class="link" href="https://docs.google.com/document/d/1Sn1ueJjTrQ9D1X4q3lCoBXLmicX39yHG/edit?usp=sharing"
+                   target="_blank">
+                    Политика в отношении обработки персональных данных
+                </a>
+            </p>
+
+            <p>
+                <a class="link" href="https://docs.google.com/document/d/1sMFEzDyE_lyDwxY1JiOn6sN9wUe8vh5Q/edit?usp=sharing"
+                   target="_blank">
+                    Правила модерации и политика этичного общения
+                </a>
+            </p>
+        </div>
+
+        <!-- Чекбокс согласия -->
+        <div class="checkbox-block">
+            <label>
+                <input type="checkbox" id="agreeCheckbox" onchange="toggleButton()">
+                Я ознакомился(лась) и принимаю условия
+            </label>
+        </div>
+
+        <button type="submit" id="registerBtn" disabled>
+            Register
+        </button>
+
     </form>
+
+    <!-- Ссылка на вход -->
+    <div class="link">
+
+        <a class="link" href="/login">Уже есть аккаунт? Войти</a>
+    </div>
+
 </div>
 
 <script>
@@ -79,6 +147,13 @@ function toggleFields() {
         block.classList.add("hidden");
         block.querySelectorAll("input").forEach(i => i.required = false);
     }
+}
+
+function toggleButton() {
+    const checkbox = document.getElementById("agreeCheckbox");
+    const button = document.getElementById("registerBtn");
+
+    button.disabled = !checkbox.checked;
 }
 </script>
 
