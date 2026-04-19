@@ -780,71 +780,92 @@ th:last-child, td:last-child{
     </form>
 
     <table>
-      <tr>
-        <th>ID</th>
-        <th>Email</th>
-        <th>Телефон</th>
-        <th>Статус</th>
-        <th>Сумма</th>
-        <th>Действия</th>
-      </tr>
+  <tr>
+    <th>ID</th>
+    <th>Email</th>
+    <th>Телефон</th>
+    <th>Статус</th>
+    <th>Сумма</th>
+    <th>Действия</th>
+  </tr>
 
-      {% for o in orders_admin %}
-        {% if not selected_status or o.status == selected_status %}
-      <tr>
-        <td>{{ o.order_id }}</td>
-        <td>{{ o.email }}</td>
-        <td>{{ o.phone }}</td>
+  {% for o in orders_admin %}
+  <tr>
+    <td>{{ o.order.order_id }}</td>
+    <td>{{ o.order.email }}</td>
+    <td>{{ o.order.phone }}</td>
 
-        <td>
-          <span class="
-            {% if o.status == 'Ожидает обработки' %}
-              status-red
-            {% elif o.status == 'Обработан' %}
-              status-yellow
-            {% elif o.status == 'Готов к выдаче' %}
-              status-green
-            {% endif %}
-          ">
-            {{ o.status }}
-          </span>
-        </td>
+    <td>
+      <span class="
+    {% if o.order.status == 'Ожидает обработки' %}
+        status-red
+    {% elif o.order.status == 'Обработан' %}
+        status-yellow
+    {% elif o.order.status == 'Готов к выдаче' %}
+        status-green
+    {% endif %}
+" style="white-space: nowrap;">
+    {{ o.order.status }}
+</span>
+    </td>
 
-        <td>{{ "%.2f"|format(o.total_amount) }}</td>
+    <td>{{ "%.2f"|format(o.order.total_amount) }}</td>
 
-        <td>
-          <form method="POST" class="row">
-            <input type="hidden" name="action" value="update_order_status">
-            <input type="hidden" name="order_id" value="{{ o.order_id }}">
-            <input type="hidden" name="current_filter" value="{{ selected_status }}">
+    <td>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 
-            <select name="new_status">
-              <option value="Ожидает обработки"
-                {% if o.status == "Ожидает обработки" %}selected{% endif %}>
-                Ожидает обработки
-              </option>
+    <form method="POST" style="display:flex; gap:6px; align-items:center;">
+      <input type="hidden" name="action" value="update_order_status">
+      <input type="hidden" name="order_id" value="{{ o.order.order_id }}">
 
-              <option value="Обработан"
-                {% if o.status == "Обработан" %}selected{% endif %}>
-                Обработан
-              </option>
+      <select name="new_status"
+              style="min-width:190px; padding:6px; border-radius:6px;">
+        <option>Ожидает обработки</option>
+        <option>Обработан</option>
+        <option>Готов к выдаче</option>
+      </select>
 
-              <option value="Готов к выдаче"
-                {% if o.status == "Готов к выдаче" %}selected{% endif %}>
-                Готов к выдаче
-              </option>
-            </select>
+      <button class="btn primary" type="submit">
+        Сохранить
+      </button>
+    </form>
 
-            <button class="btn primary" type="submit">
-              Сохранить
-            </button>
-          </form>
-        </td>
-      </tr>
-        {% endif %}
-      {% endfor %}
+    <button onclick="toggleDetails('order{{ o.order.order_id }}')"
+            style="background:#33CCCC;
+                   color:white;
+                   border:none;
+                   padding:6px 10px;
+                   border-radius:6px;">
+      Подробнее
+    </button>
 
-    </table>
+  </div>
+</td>
+  </tr>
+
+  <!-- СКРЫТЫЙ БЛОК ТОВАРОВ -->
+  <tr id="order{{ o.order.order_id }}" style="display:none;">
+    <td colspan="6" style="background:#f9f9f9;">
+      <table style="width:100%; border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th>Товар</th>
+          <th>Кол-во</th>
+          <th>Цена</th>
+        </tr>
+
+        {% for item in o["items"] %}
+        <tr>
+          <td>{{ item.product_name }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>{{ "%.2f"|format(item.price_at_moment) }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </td>
+  </tr>
+
+  {% endfor %}
+</table>
 
   </div>
 </details>
@@ -962,6 +983,12 @@ th:last-child, td:last-child{
   setupDetails("catsBox", "catsToggleText");
   setupDetails("productsBox", "productsToggleText");
 })();
+</script>
+<script>
+function toggleDetails(id){
+    const el = document.getElementById(id);
+    el.style.display = el.style.display === "none" ? "table-row" : "none";
+}
 </script>
 </body>
 </html>

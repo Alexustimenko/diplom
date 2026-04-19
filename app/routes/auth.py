@@ -1344,13 +1344,26 @@ def admin():
     cur.execute("EXEC dbo.sp_get_all_users_admin ?", user_filter)
 
     users_admin = cur.fetchall()
+    # 🔹 Получаем товары для каждого заказа
+    orders_with_items = []
+
+    for o in orders_admin:
+        cur.execute("EXEC dbo.sp_get_order_items_admin ?", o.order_id)
+        items = cur.fetchall()
+
+        orders_with_items.append({
+            "order": o,
+            "items": items
+        })
+
+
     conn.close()
     status_filter = request.args.get("status")
 
     return render_template(
         "admin.html",
         brands=brands,
-        orders_admin=orders_admin,
+        orders_admin=orders_with_items,
         categories=categories,
         products=products,
         users_admin=users_admin,
@@ -1358,6 +1371,7 @@ def admin():
         tab="products",
         error=error,
         selected_status=status_filter,
+
         success=success
 
     )
