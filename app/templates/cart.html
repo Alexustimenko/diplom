@@ -98,8 +98,13 @@
                     </td>
                     <td>{{ "%.2f"|format(it.line_total) }} Бел.руб.</td>
                     <td>
-                        <a class="btn" href="/cart/remove/{{ it.product_id }}">Удалить</a>
-                    </td>
+    <button type="submit"
+            formaction="{{ url_for('auth.cart_remove', pid=it.product_id) }}"
+            formmethod="POST"
+            class="btn">
+        Удалить
+    </button>
+</td>
                 </tr>
                 {% endfor %}
             </table>

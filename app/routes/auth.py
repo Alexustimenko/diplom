@@ -2930,11 +2930,19 @@ def cart_remove(pid):
     if gate:
         return gate
 
-    cart_map = _cart()
-    cart_map.pop(str(pid), None)
-    session.modified = True
-    return redirect("/cart")
+    # берём напрямую из session
+    cart_map = session.get("cart", {})
 
+    print("До удаления:", cart_map)
+
+    cart_map.pop(str(pid), None)
+
+    print("После удаления:", cart_map)
+
+    # ПЕРЕЗАПИСЫВАЕМ
+    session["cart"] = cart_map
+
+    return redirect("/cart")
 @auth_bp.route("/cart/clear", methods=["POST"])
 def cart_clear():
     gate = _require_login()
