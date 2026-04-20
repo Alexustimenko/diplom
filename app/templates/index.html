@@ -349,6 +349,40 @@
   padding: 12px 22px;    /* толще */
   text-align: center;
 }
+        .footer{
+    margin-top:60px;
+    background:white;
+    padding:30px 20px;
+    box-shadow:0 -6px 16px rgba(0,0,0,0.15);
+}
+
+.footer-content{
+    max-width:1100px;
+    margin:0 auto;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:30px;
+}
+
+.footer-block{
+    font-weight:800;
+    color:#0b3b3b;
+}
+
+.footer-title{
+    color:#CF1B03;
+    font-size:18px;
+    margin-bottom:10px;
+}
+        .footer a{
+    text-decoration:none;
+    color:#0b3b3b;
+}
+
+.footer a:hover{
+    color:#CF1B03;
+}
     </style>
 </head>
 <body>
@@ -867,5 +901,32 @@ function goServerSearch(){
 })();
 
 </script>
+<!-- ПОДВАЛ -->
+<footer class="footer">
+    <div class="footer-content">
+
+        <div class="footer-block">
+    <div class="footer-title">Наши телефоны</div>
+
+    <div>
+        <a href="tel:+375293514550">+375 (29) 351 45 50</a>
+    </div>
+
+    <div>
+        <a href="tel:+375173489982">+375 (17) 348 99 82</a>
+    </div>
+
+    <div>
+        <a href="tel:+375297514550">+375 (29) 751 45 50</a>
+    </div>
+</div>
+
+        <div class="footer-block">
+            <div class="footer-title">Наш адрес</div>
+            <div>г.Минск, ул. Маяковского, 26, кабинет 1</div>
+        </div>
+
+    </div>
+</footer>
 </body>
 </html>
