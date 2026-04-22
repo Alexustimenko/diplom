@@ -1387,6 +1387,11 @@ def admin_reports():
     date_to   = request.args.get("to", "").strip()
     target_category_id = request.args.get("target_category_id", "").strip()
     brand_id = request.args.get("parts_brand_id", "").strip()
+    selected_email = request.args.get("email", "all")
+    selected_status = request.args.get("status", "all")
+    selected_client = request.args.get("client", "all")
+    selected_category = request.args.get("category", "all")
+    selected_cat_products = request.args.get("cat_products", "all")
 
     parts_rows = []
 
@@ -1405,15 +1410,58 @@ def admin_reports():
     cur = conn.cursor()
 
     # 0) товары по категориям (старый VIEW)
-    cur.execute("SELECT * FROM dbo.vw_report_products_per_category ORDER BY category_name")
+    if selected_cat_products != "all" and selected_cat_products.isdigit():
+        cur.execute("""
+            SELECT *
+            FROM dbo.vw_report_products_per_category
+            WHERE category_id = ?
+            ORDER BY category_name
+        """, int(selected_cat_products))
+    else:
+        cur.execute("""
+            SELECT *
+            FROM dbo.vw_report_products_per_category
+            ORDER BY category_name
+        """)
     report_rows = cur.fetchall()
 
+    cur.execute("SELECT email FROM dbo.users ORDER BY email")
+    clients_list = cur.fetchall()
+
+    # категории
+    cur.execute("SELECT category_id, name FROM dbo.categories ORDER BY name")
+    categories_list = cur.fetchall()
+    statuses_list = [
+        "Ожидает обработки",
+        "Обработан",
+        "Готов к выдаче"
+    ]
+    status_param = selected_status if selected_status != "all" else None
+    client_param = selected_client if selected_client != "all" else None
+    category_param = int(selected_category) if selected_category.isdigit() else None
+
     # 1) заказы за период
-    cur.execute("EXEC dbo.sp_report_orders_period_grouped ?, ?", date_from, date_to)
+    cur.execute(
+        "EXEC dbo.sp_report_orders_period_grouped ?, ?, ?, ?, ?",
+        date_from,
+        date_to,
+        status_param,
+        client_param,
+        category_param
+    )
     orders_rows = cur.fetchall()
 
     # 2) клиенты (история заказов за период)
-    cur.execute("EXEC sp_report_clients_orders")
+    # 2) список пользователей для dropdown
+    cur.execute("SELECT email FROM dbo.users ORDER BY email")
+    users_list = cur.fetchall()
+
+    # 2) клиенты с фильтром
+    if selected_email and selected_email != "all":
+        cur.execute("EXEC dbo.sp_report_clients_orders ?", selected_email)
+    else:
+        cur.execute("EXEC dbo.sp_report_clients_orders NULL")
+
     customers_rows = cur.fetchall()
 
     # 3) проданные товары за период
@@ -1450,6 +1498,15 @@ def admin_reports():
         target_category_id=target_category_id,
         parts_brand_id=brand_id,
         parts_rows=parts_rows,
+        users_list=users_list,
+        selected_email=selected_email,
+        statuses_list=statuses_list,
+        clients_list=clients_list,
+        categories_list=categories_list,
+        selected_status=selected_status,
+        selected_client=selected_client,
+        selected_category=selected_category,
+        selected_cat_products=selected_cat_products,
     )
 
 
@@ -1470,20 +1527,37 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
-
+from openpyxl.styles import PatternFill
 @auth_bp.route("/admin/reports/excel")
 def export_excel():
     gate = _require_admin()
     if gate:
         return gate
+    selected_cat_products = request.args.get("cat_products", "all")
 
     # 1) данные
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM dbo.vw_report_products_per_category ORDER BY category_name")
+
+    if selected_cat_products != "all" and selected_cat_products.isdigit():
+        cur.execute("""
+            SELECT *
+            FROM dbo.vw_report_products_per_category
+            WHERE category_id = ?
+            ORDER BY category_name
+        """, int(selected_cat_products))
+    else:
+        cur.execute("""
+            SELECT *
+            FROM dbo.vw_report_products_per_category
+            ORDER BY category_name
+        """)
     rows = cur.fetchall()
     conn.close()
-
+    if selected_cat_products != "all" and rows:
+        filters_text = f"Категория: {rows[0].category_name}"
+    else:
+        filters_text = "Категория: Все"
     # 2) excel
     wb = Workbook()
     ws = wb.active
@@ -1546,29 +1620,56 @@ def export_excel():
     ws["A6"].alignment = center
     ws.merge_cells("A6:B6")
 
-    ws["A7"] = "по количеству товаров в категориях"
+    ws["A7"] = "по количеству товаров"
     ws["A7"].font = bold_mid
     ws["A7"].alignment = center
     ws.merge_cells("A7:B7")
-
-    ws["A8"] = f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}"
+    ws["A8"] = "Критерии фильтрации:"
     ws["A8"].font = bold
     ws["A8"].alignment = center
     ws.merge_cells("A8:B8")
 
+    ws["A9"] = filters_text
+    ws["A9"].alignment = wrap_left
+    ws.merge_cells("A9:B9")
+
+    ws["A10"] = f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}"
+    ws["A10"].font = bold
+    ws["A10"].alignment = center
+    ws.merge_cells("A10:B10")
+
     # --- ТАБЛИЦА (без ID) ---
-    start_row = 10
+    # --- ТАБЛИЦА ---
+    start_row = 11
 
-    ws.cell(row=start_row, column=1, value="Категория").font = bold
-    ws.cell(row=start_row, column=2, value="Количество").font = bold
-    ws.cell(row=start_row, column=1).alignment = center_wrap
-    ws.cell(row=start_row, column=2).alignment = center_wrap
+    header_fill = PatternFill(start_color="EEECE1",
+                              end_color="EEECE1",
+                              fill_type="solid")
 
+    # ===== ШАПКА =====
+    headers = ["Категория", "Количество"]
+
+    for col, title in enumerate(headers, 1):
+        cell = ws.cell(row=start_row, column=col, value=title)
+        cell.font = bold
+        cell.alignment = center_wrap
+        cell.fill = header_fill
+        cell.border = border
+
+    # ===== ДАННЫЕ =====
     r0 = start_row + 1
+
     for i, r in enumerate(rows):
         rr = r0 + i
-        ws.cell(row=rr, column=1, value=str(r.category_name)).alignment = Alignment(vertical="top", wrap_text=True)
-        ws.cell(row=rr, column=2, value=int(r.products_count)).alignment = center
+
+        c1 = ws.cell(row=rr, column=1, value=str(r.category_name))
+        c2 = ws.cell(row=rr, column=2, value=int(r.products_count))
+
+        c1.alignment = center_wrap
+        c2.alignment = center_wrap
+
+        c1.border = border
+        c2.border = border
 
     last_row = r0 + len(rows) - 1 if rows else start_row
 
@@ -1576,8 +1677,12 @@ def export_excel():
         for cc in range(1, 3):
             ws.cell(row=rr, column=cc).border = border
 
+    total_row = last_row + 2
+    ws.cell(row=total_row, column=1, value="Итого записей:").font = bold
+    ws.cell(row=total_row, column=2, value=len(rows)).font = bold
+
     # закрепим верх (строка после заголовка таблицы)
-    ws.freeze_panes = ws["A11"]
+    ws.freeze_panes = ws["A12"]
 
     # ширины колонок
     for col in range(1, 3):
@@ -1612,19 +1717,40 @@ from datetime import datetime
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.enum.table import WD_ALIGN_VERTICAL
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 @auth_bp.route("/admin/reports/word")
 def export_word():
     gate = _require_admin()
     if gate:
         return gate
+    selected_cat_products = request.args.get("cat_products", "all")
 
     # 1) данные
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM dbo.vw_report_products_per_category ORDER BY category_name")
+    if selected_cat_products != "all" and selected_cat_products.isdigit():
+        cur.execute("""
+                SELECT *
+                FROM dbo.vw_report_products_per_category
+                WHERE category_id = ?
+                ORDER BY category_name
+            """, int(selected_cat_products))
+    else:
+        cur.execute("""
+                SELECT *
+                FROM dbo.vw_report_products_per_category
+                ORDER BY category_name
+            """)
     rows = cur.fetchall()
     conn.close()
+    if selected_cat_products != "all" and rows:
+        filter_text = f"Категория: {rows[0].category_name}"
+    else:
+        filter_text = "Категория: Все"
 
     # 2) документ
     doc = Document()
@@ -1686,11 +1812,20 @@ def export_word():
     r1.bold = True
     r1.font.size = Pt(14)
 
-    p2 = doc.add_paragraph("по количеству товаров в категориях")
+    p2 = doc.add_paragraph("по количеству товаров")
     p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r2 = p2.runs[0]
     r2.bold = True
     r2.font.size = Pt(12)
+
+    doc.add_paragraph("")
+
+    p_filter_title = doc.add_paragraph("Критерии фильтрации:")
+    p_filter_title.runs[0].bold = True
+
+    p_filter_value = doc.add_paragraph(filter_text)
+
+    doc.add_paragraph("")
 
     # ✅ дата: по центру и жирным
     p_date = doc.add_paragraph(f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}")
@@ -1702,17 +1837,43 @@ def export_word():
     doc.add_paragraph("")
 
     # --- Таблица: Категория + Количество, с границами ---
+    # --- Таблица ---
     t = doc.add_table(rows=1, cols=2)
     t.style = "Table Grid"
 
+    # ===== ШАПКА =====
     hdr = t.rows[0].cells
     hdr[0].text = "Категория"
     hdr[1].text = "Количество"
 
+    for cell in hdr:
+        # выравнивание по центру
+        cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        for p in cell.paragraphs:
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in p.runs:
+                run.bold = True
+
+        # заливка цвета EEECE1
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), "EEECE1")
+        tcPr.append(shd)
+
+    # ===== ДАННЫЕ =====
     for r in rows:
-        c = t.add_row().cells
-        c[0].text = str(r.category_name)
-        c[1].text = str(r.products_count)
+        row_cells = t.add_row().cells
+        row_cells[0].text = str(r.category_name)
+        row_cells[1].text = str(r.products_count)
+
+        for cell in row_cells:
+            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            for p in cell.paragraphs:
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph("")
+    p_total = doc.add_paragraph(f"Итого записей: {len(rows)}")
+    p_total.runs[0].bold = True
 
     # 3) отдаём файл
     buf = io.BytesIO()
@@ -1751,9 +1912,21 @@ def report_clients():
     if gate:
         return gate
 
+    selected_email = request.args.get("email")
+
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("EXEC dbo.sp_report_clients_orders")
+
+    # Получаем список пользователей для dropdown
+    cur.execute("SELECT email FROM dbo.users ORDER BY email")
+    users = cur.fetchall()
+
+    # Формируем отчёт
+    if selected_email and selected_email != "all":
+        cur.execute("EXEC dbo.sp_report_clients_orders ?", selected_email)
+    else:
+        cur.execute("EXEC dbo.sp_report_clients_orders NULL")
+
     rows = cur.fetchall()
     conn.close()
 
@@ -1761,7 +1934,9 @@ def report_clients():
         "admin.html",
         tab="reports",
         report_tab="clients",
-        rows=rows
+        customers_rows=rows,
+        users_list=users,
+        selected_email=selected_email
     )
 @auth_bp.route("/admin/reports/products")
 def report_products_period():
@@ -1830,15 +2005,48 @@ def export_orders_excel():
 
     date_from = request.args.get("from", "").strip()
     date_to = request.args.get("to", "").strip()
+    selected_status = request.args.get("status", "all")
+    selected_client = request.args.get("client", "all")
+    selected_category = request.args.get("category", "all")
     if not date_from or not date_to:
         return redirect("/admin/reports?rtab=orders")
+    status_param = selected_status if selected_status != "all" else None
+    client_param = selected_client if selected_client != "all" else None
+    category_param = int(selected_category) if selected_category.isdigit() else None
 
     # 1) данные
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("EXEC dbo.sp_report_orders_period_grouped ?, ?", date_from, date_to)
+    cur.execute(
+        "EXEC dbo.sp_report_orders_period_grouped ?, ?, ?, ?, ?",
+        date_from,
+        date_to,
+        status_param,
+        client_param,
+        category_param
+    )
     rows = cur.fetchall()
     conn.close()
+    # --- Определяем читаемые значения фильтров ---
+    status_text = selected_status if selected_status != "all" else "Все"
+    client_text = selected_client if selected_client != "all" else "Все"
+
+    if selected_category == "all":
+        category_text = "Все"
+    else:
+        # если в выборке есть строки — берём имя категории из отчёта
+        if rows:
+            category_text = rows[0].category_name
+        else:
+            category_text = "Выбрана категория"
+
+    filters = [
+        f"Статус: {status_text}",
+        f"Клиент: {client_text}",
+        f"Категория: {category_text}"
+    ]
+
+    filters_text = "\n".join(filters)
 
     # 2) excel
     wb = Workbook()
@@ -1855,6 +2063,9 @@ def export_orders_excel():
 
     thin = Side(style="thin", color="000000")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_fill = PatternFill(start_color="EEECE1",
+                              end_color="EEECE1",
+                              fill_type="solid")
 
     # ширины колонок (под таблицу)
     widths = [14, 30, 28, 12, 12, 16]
@@ -1925,9 +2136,20 @@ def export_orders_excel():
     c3.value = f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}"
     c3.font = bold
     c3.alignment = center
+    # --- Критерии фильтрации ---
+    ws.merge_cells(start_row=title_row + 3, start_column=1, end_row=title_row + 3, end_column=6)
+    cf_title = ws.cell(row=title_row + 3, column=1)
+    cf_title.value = "Критерии фильтрации:"
+    cf_title.font = bold
+    cf_title.alignment = center
+
+    ws.merge_cells(start_row=title_row + 4, start_column=1, end_row=title_row + 6, end_column=6)
+    cf_text = ws.cell(row=title_row + 4, column=1)
+    cf_text.value = filters_text
+    cf_text.alignment = wrap_left
 
     # --- Таблица ---
-    table_start = title_row + 4
+    table_start = title_row + 8
     headers = ["Статус", "Клиент", "Категория", "Заказов", "Позиций", "Сумма"]
 
     for col, h in enumerate(headers, 1):
@@ -1935,6 +2157,7 @@ def export_orders_excel():
         cell.font = bold
         cell.alignment = center_wrap
         cell.border = border
+        cell.fill = header_fill
 
     r_i = table_start + 1
     for r in rows:
@@ -1946,12 +2169,17 @@ def export_orders_excel():
         ws.cell(row=r_i, column=6, value=float(r.total_sum) if r.total_sum is not None else 0.0)
 
         for col in range(1, 7):
-            ws.cell(row=r_i, column=col).alignment = Alignment(vertical="top", wrap_text=True)
+            ws.cell(row=r_i, column=col).alignment = center_wrap
             ws.cell(row=r_i, column=col).border = border
 
         r_i += 1
 
     ws.freeze_panes = ws[f"A{table_start+1}"]
+    # --- Итого записей ---
+    total_row = r_i + 1
+    ws.cell(row=total_row, column=1, value="Итого записей:").font = bold
+    ws.cell(row=total_row, column=2, value=len(rows)).font = bold
+
 
     # сохранить и отдать
     buf = io.BytesIO()
@@ -1974,15 +2202,42 @@ def export_orders_word():
 
     date_from = request.args.get("from", "").strip()
     date_to = request.args.get("to", "").strip()
+    selected_status = request.args.get("status", "all")
+    selected_client = request.args.get("client", "all")
+    selected_category = request.args.get("category", "all")
     if not date_from or not date_to:
         return redirect("/admin/reports?rtab=orders")
+    status_param = selected_status if selected_status != "all" else None
+    client_param = selected_client if selected_client != "all" else None
+    category_param = int(selected_category) if selected_category.isdigit() else None
 
     # 1) данные
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("EXEC dbo.sp_report_orders_period_grouped ?, ?", date_from, date_to)
+    cur.execute(
+        "EXEC dbo.sp_report_orders_period_grouped ?, ?, ?, ?, ?",
+        date_from,
+        date_to,
+        status_param,
+        client_param,
+        category_param
+    )
     rows = cur.fetchall()
     conn.close()
+    # --- Читаемые значения фильтров ---
+    status_text = selected_status if selected_status != "all" else "Все"
+    client_text = selected_client if selected_client != "all" else "Все"
+
+    if selected_category == "all":
+        category_text = "Все"
+    else:
+        category_text = rows[0].category_name if rows else "Выбрана категория"
+
+    filters_text = (
+        f"Статус: {status_text}\n"
+        f"Клиент: {client_text}\n"
+        f"Категория: {category_text}"
+    )
 
     # 2) документ
     doc = Document()
@@ -2057,12 +2312,30 @@ def export_orders_word():
     rdate.font.size = Pt(11)
 
     doc.add_paragraph("")
+    # --- Критерии фильтрации ---
+    p_cf_title = doc.add_paragraph("Критерии фильтрации:")
+    p_cf_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_cf_title.runs[0].bold = True
+
+    p_cf = doc.add_paragraph(filters_text)
+    p_cf.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+    doc.add_paragraph("")
 
     # --- таблица с границами ---
     t = doc.add_table(rows=1, cols=6)
     t.style = "Table Grid"
 
     hdr = t.rows[0].cells
+    from docx.oxml import parse_xml
+    from docx.oxml.ns import nsdecls
+
+    for cell in hdr:
+        shading = parse_xml(r'<w:shd {} w:fill="EEECE1"/>'.format(nsdecls('w')))
+        cell._tc.get_or_add_tcPr().append(shading)
+
+        for paragraph in cell.paragraphs:
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     hdr[0].text = "Статус"
     hdr[1].text = "Клиент"
     hdr[2].text = "Категория"
@@ -2072,12 +2345,23 @@ def export_orders_word():
 
     for r in rows:
         c = t.add_row().cells
-        c[0].text = str(r.status)
-        c[1].text = str(r.client_email)
-        c[2].text = str(r.category_name)
-        c[3].text = str(r.orders_count)
-        c[4].text = str(r.items_count)
-        c[5].text = str(r.total_sum)
+        values = [
+            str(r.status),
+            str(r.client_email),
+            str(r.category_name),
+            str(r.orders_count),
+            str(r.items_count),
+            str(r.total_sum)
+        ]
+
+        for i, val in enumerate(values):
+            c[i].text = val
+            for paragraph in c[i].paragraphs:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph("")
+
+    p_total = doc.add_paragraph(f"Итого записей: {len(rows)}")
+    p_total.runs[0].bold = True
 
     # 3) отдаём
     buf = io.BytesIO()
@@ -2089,13 +2373,21 @@ def export_clients_excel():
     gate = _require_admin()
     if gate:
         return gate
+    selected_email = request.args.get("email", "all")
 
     # 1) данные
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("EXEC dbo.sp_report_clients_orders")
+    if selected_email and selected_email != "all":
+        cur.execute("EXEC dbo.sp_report_clients_orders ?", selected_email)
+    else:
+        cur.execute("EXEC dbo.sp_report_clients_orders NULL")
     rows = cur.fetchall()
     conn.close()
+    # --- Читаемое значение фильтра ---
+    email_text = selected_email if selected_email != "all" else "Все"
+
+    filters_text = f"Клиент: {email_text}"
 
     # 2) excel
     wb = Workbook()
@@ -2112,6 +2404,9 @@ def export_clients_excel():
 
     thin = Side(style="thin", color="000000")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_fill = PatternFill(start_color="EEECE1",
+                              end_color="EEECE1",
+                              fill_type="solid")
 
     # --- ЛОГО (A1) ---
     ws.merge_cells("A1:E1")
@@ -2161,15 +2456,26 @@ def export_clients_excel():
     ws["A9"].font = bold
     ws["A9"].alignment = center
     ws.merge_cells("A9:E9")
+    # --- Критерии фильтрации ---
+    ws["A10"] = "Критерии фильтрации:"
+    ws["A10"].font = bold
+    ws["A10"].alignment = center
+    ws.merge_cells("A10:E10")
+
+    ws["A11"] = filters_text
+    ws["A11"].alignment = wrap_left
+    ws.merge_cells("A11:E11")
 
     # --- ТАБЛИЦА (БЕЗ User ID) ---
-    table_start = 11
+    table_start = 13
     headers = ["Email", "Заказов", "Потрачено", "Первый заказ", "Последний заказ"]
 
     for col, h in enumerate(headers, 1):
         cell = ws.cell(row=table_start, column=col, value=h)
         cell.font = bold
         cell.alignment = center_wrap
+        cell.border = border
+        cell.fill = header_fill
 
     r_i = table_start + 1
     for r in rows:
@@ -2180,10 +2486,14 @@ def export_clients_excel():
         ws.cell(row=r_i, column=5, value=str(r.last_order) if r.last_order else "Клиент ничего не покупал")
 
         for col in range(1, 6):
-            ws.cell(row=r_i, column=col).alignment = Alignment(vertical="top", wrap_text=True)
+            ws.cell(row=r_i, column=col).alignment = center_wrap
         r_i += 1
 
     last_row = r_i - 1
+    # --- Итого записей ---
+    total_row = last_row + 2
+    ws.cell(row=total_row, column=1, value="Итого записей:").font = bold
+    ws.cell(row=total_row, column=2, value=len(rows)).font = bold
 
     # границы только у таблицы (шапку/реквизиты не трогаем)
     for rr in range(table_start, last_row + 1):
@@ -2207,12 +2517,20 @@ def export_clients_word():
     if gate:
         return gate
 
+    selected_email = request.args.get("email", "all")
+
     # 1) данные
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("EXEC dbo.sp_report_clients_orders")
+    if selected_email and selected_email != "all":
+        cur.execute("EXEC dbo.sp_report_clients_orders ?", selected_email)
+    else:
+        cur.execute("EXEC dbo.sp_report_clients_orders NULL")
     rows = cur.fetchall()
     conn.close()
+    # --- Читаемое значение фильтра ---
+    email_text = selected_email if selected_email != "all" else "Все"
+    filters_text = f"Клиент: {email_text}"
 
     # 2) документ
     doc = Document()
@@ -2282,6 +2600,15 @@ def export_clients_word():
     r3.font.size = Pt(11)
 
     doc.add_paragraph("")
+    # --- Критерии фильтрации ---
+    p_cf_title = doc.add_paragraph("Критерии фильтрации:")
+    p_cf_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_cf_title.runs[0].bold = True
+
+    p_cf = doc.add_paragraph(filters_text)
+    p_cf.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+    doc.add_paragraph("")
 
     # --- Таблица с границами ---
     # (оставляем 6 колонок как у тебя)
@@ -2289,6 +2616,15 @@ def export_clients_word():
     t.style = "Table Grid"
 
     hdr = t.rows[0].cells
+    from docx.oxml import parse_xml
+    from docx.oxml.ns import nsdecls
+
+    for cell in hdr:
+        shading = parse_xml(r'<w:shd {} w:fill="EEECE1"/>'.format(nsdecls('w')))
+        cell._tc.get_or_add_tcPr().append(shading)
+
+        for paragraph in cell.paragraphs:
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     hdr[0].text = "Email"
     hdr[1].text = "Заказов"
     hdr[2].text = "Потрачено"
@@ -2297,11 +2633,23 @@ def export_clients_word():
 
     for r in rows:
         c = t.add_row().cells
-        c[0].text = str(r.email)
-        c[1].text = str(r.orders_count)
-        c[2].text = str(r.total_spent)
-        c[3].text = str(r.first_order) if r.first_order else "Клиент ничего не покупал"
-        c[4].text = str(r.last_order) if r.last_order else "Клиент ничего не покупал"
+
+        values = [
+            str(r.email),
+            str(r.orders_count),
+            str(r.total_spent),
+            str(r.first_order) if r.first_order else "Клиент ничего не покупал",
+            str(r.last_order) if r.last_order else "Клиент ничего не покупал"
+        ]
+
+        for i, val in enumerate(values):
+            c[i].text = val
+            for paragraph in c[i].paragraphs:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph("")
+
+    p_total = doc.add_paragraph(f"Итого записей: {len(rows)}")
+    p_total.runs[0].bold = True
     # 3) отдаём файл
     buf = io.BytesIO()
     doc.save(buf)
@@ -2340,6 +2688,9 @@ def export_products_excel():
 
     thin = Side(style="thin", color="000000")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_fill = PatternFill(start_color="EEECE1",
+                              end_color="EEECE1",
+                              fill_type="solid")
 
     # колонки под таблицу (4 колонки)
     ws.column_dimensions["A"].width = 38  # Товар
@@ -2412,7 +2763,8 @@ def export_products_excel():
         cell = ws.cell(row=table_start, column=col, value=h)
         cell.font = bold
         cell.alignment = center_wrap
-
+        cell.fill = header_fill
+        cell.border = border
     r_i = table_start + 1
     for r in rows:
         # пытаемся взять категорию, если она есть в результате процедуры
@@ -2422,14 +2774,24 @@ def export_products_excel():
         elif hasattr(r, "category") and r.category is not None:
             cat_val = str(r.category)
 
-        ws.cell(row=r_i, column=1, value=str(r.name) if r.name is not None else "-").alignment = Alignment(wrap_text=True, vertical="top")
-        ws.cell(row=r_i, column=2, value=cat_val).alignment = Alignment(wrap_text=True, vertical="top")
-        ws.cell(row=r_i, column=3, value=int(r.sold_qty) if r.sold_qty is not None else 0).alignment = center
-        ws.cell(row=r_i, column=4, value=float(r.revenue) if r.revenue is not None else 0.0).alignment = center
+        ws.cell(row=r_i, column=1,
+                value=str(r.name) if r.name is not None else "-").alignment = center_wrap
+
+        ws.cell(row=r_i, column=2,
+                value=cat_val).alignment = center_wrap
+
+        ws.cell(row=r_i, column=3,
+                value=int(r.sold_qty) if r.sold_qty is not None else 0).alignment = center_wrap
+
+        ws.cell(row=r_i, column=4,
+                value=float(r.revenue) if r.revenue is not None else 0.0).alignment = center_wrap
         r_i += 1
 
     last_row = max(table_start, r_i - 1)
-
+    # --- Итого записей ---
+    total_row = last_row + 2
+    ws.cell(row=total_row, column=1, value="Итого записей:").font = bold
+    ws.cell(row=total_row, column=2, value=len(rows)).font = bold
     # границы только на таблицу (шапка+данные)
     for rr in range(table_start, last_row + 1):
         for cc in range(1, 5):
@@ -2532,19 +2894,43 @@ def export_products_word():
     # --- Таблица (БЕЗ ID), с границами ---
     t = doc.add_table(rows=1, cols=4)
     t.style = "Table Grid"
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    def set_cell_background(cell, color):
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), color)
+        tcPr.append(shd)
 
     hdr = t.rows[0].cells
-    hdr[0].text = "Товар"
-    hdr[1].text = "Категория"
-    hdr[2].text = "Продано (шт)"
-    hdr[3].text = "Выручка"
+    headers = ["Товар", "Категория", "Продано (шт)", "Выручка"]
+
+    for i, text in enumerate(headers):
+        hdr[i].text = text
+        hdr[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        hdr[i].paragraphs[0].runs[0].bold = True
+        set_cell_background(hdr[i], "EEECE1")
 
     for r in rows:
         c = t.add_row().cells
-        c[0].text = str(getattr(r, "name", ""))
-        c[1].text = str(getattr(r, "category_name", ""))  # должно прийти из процедуры
-        c[2].text = str(getattr(r, "sold_qty", 0))
-        c[3].text = str(getattr(r, "revenue", 0))
+        values = [
+            str(getattr(r, "name", "")),
+            str(getattr(r, "category_name", "")),
+            str(getattr(r, "sold_qty", 0)),
+            str(getattr(r, "revenue", 0)),
+        ]
+
+        for i, val in enumerate(values):
+            c[i].text = val
+            c[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph("")
+
+    p_total = doc.add_paragraph()
+    p_total.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run_total = p_total.add_run(f"Итого записей: {len(rows)}")
+    run_total.bold = True
 
     buf = io.BytesIO()
     doc.save(buf)
@@ -2568,12 +2954,25 @@ def export_parts_excel():
     # 1) данные
     conn = get_conn()
     cur = conn.cursor()
+    cur.execute("SELECT name FROM categories WHERE category_id = ?", int(target_category_id))
+    cat_row = cur.fetchone()
+    category_name = cat_row.name if cat_row else "Неизвестно"
+
+    # --- получаем название бренда (если выбран) ---
+    brand_name = "Все бренды"
+    if bval:
+        cur.execute("SELECT name FROM brands WHERE id_brand = ?", bval)
+        brand_row = cur.fetchone()
+        if brand_row:
+            brand_name = brand_row.name
     cur.execute(
         "EXEC dbo.sp_report_parts_by_brand_and_category ?, ?",
         int(target_category_id), bval
     )
     rows = cur.fetchall()
     conn.close()
+    # --- получаем название категории ---
+
 
     # 2) excel
     wb = Workbook()
@@ -2590,6 +2989,9 @@ def export_parts_excel():
 
     thin = Side(style="thin", color="000000")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_fill = PatternFill(start_color="EEECE1",
+                              end_color="EEECE1",
+                              fill_type="solid")
 
     # сделаем ширину под “шапку”
     ws.column_dimensions["A"].width = 22   # под лого
@@ -2648,9 +3050,25 @@ def export_parts_excel():
     ws["A10"] = f"По состоянию на: {datetime.now().strftime('%d.%m.%Y')}"
     ws["A10"].font = bold
     ws["A10"].alignment = center
+    # --- Критерии фильтрации ---
+    crit_row = 11
+
+    ws.merge_cells(f"A{crit_row}:F{crit_row}")
+    ws[f"A{crit_row}"] = "Критерии фильтрации:"
+    ws[f"A{crit_row}"].font = bold
+    ws[f"A{crit_row}"].alignment = center
+
+
+
+    ws.merge_cells(f"A{crit_row + 1}:F{crit_row + 3}")
+    ws[f"A{crit_row + 1}"] = (
+        f"Категория товара: {category_name}\n"
+        f"Бренд: {brand_name}"
+    )
+    ws[f"A{crit_row + 1}"].alignment = left_wrap
 
     # --- Таблица (БЕЗ ID) ---
-    table_start = 12
+    table_start = 15
     headers = ["Запчасть", "Бренд", "Категория запчасти", "Цена", "Остаток"]
 
     for col, h in enumerate(headers, 1):
@@ -2658,6 +3076,8 @@ def export_parts_excel():
         cell.value = h
         cell.font = bold
         cell.alignment = center_wrap
+        cell.fill = header_fill
+        cell.border = border
 
     r_i = table_start + 1
     for r in rows:
@@ -2668,10 +3088,18 @@ def export_parts_excel():
         ws.cell(row=r_i, column=5).value = int(r.stock_quantity) if r.stock_quantity is not None else 0
 
         for col in range(1, 6):
-            ws.cell(row=r_i, column=col).alignment = Alignment(vertical="top", wrap_text=True)
+            ws.cell(row=r_i, column=col).alignment = center_wrap
         r_i += 1
 
     last_row = r_i - 1
+
+    total_qty = sum(int(r.stock_quantity or 0) for r in rows)
+    total_price = sum(float(r.price or 0) for r in rows)
+
+    total_row = last_row + 2
+
+    ws.cell(row=total_row, column=1, value="Итого записей:").font = bold
+    ws.cell(row=total_row, column=2, value=len(rows)).font = bold
 
     # границы только у таблицы (шапку с лого/реквизитами НЕ трогаем)
     for row in range(table_start, last_row + 1):
@@ -2684,7 +3112,7 @@ def export_parts_excel():
         ws.column_dimensions[get_column_letter(i)].width = w
 
     # закрепим шапку таблицы
-    ws.freeze_panes = ws["A13"]
+    ws.freeze_panes = "A15"
 
     # 3) отдать файл
     buf = io.BytesIO()
@@ -2709,6 +3137,18 @@ def export_parts_word():
     # 1) данные
     conn = get_conn()
     cur = conn.cursor()
+    # --- получаем название категории ---
+    cur.execute("SELECT name FROM categories WHERE category_id = ?", int(target_category_id))
+    cat_row = cur.fetchone()
+    category_name = cat_row.name if cat_row else "Неизвестно"
+
+    # --- получаем название бренда ---
+    brand_name = "Все бренды"
+    if bval:
+        cur.execute("SELECT name FROM brands WHERE id_brand = ?", bval)
+        brand_row = cur.fetchone()
+        if brand_row:
+            brand_name = brand_row.name
     cur.execute(
         "EXEC dbo.sp_report_parts_by_brand_and_category ?, ?",
         int(target_category_id), bval
@@ -2774,25 +3214,59 @@ def export_parts_word():
     run_dt.font.size = Pt(11)
 
     doc.add_paragraph("")
+    p_cf_title = doc.add_paragraph("Критерии фильтрации:")
+    p_cf_title.runs[0].bold = True
+    p_cf_title.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+    p_cf = doc.add_paragraph()
+    p_cf.add_run(f"Категория товара: {category_name}\n")
+    p_cf.add_run(f"Бренд: {brand_name}")
+    p_cf.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+    doc.add_paragraph("")
 
     # --- Таблица: БЕЗ ID, с границами ---
     t = doc.add_table(rows=1, cols=5)
     t.style = "Table Grid"
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
 
+    def set_cell_background(cell, color):
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), color)
+        tcPr.append(shd)
+
+    headers = ["Запчасть", "Бренд", "Категория запчасти", "Цена", "Остаток"]
     hdr = t.rows[0].cells
-    hdr[0].text = "Запчасть"
-    hdr[1].text = "Бренд"
-    hdr[2].text = "Категория запчасти"
-    hdr[3].text = "Цена"
-    hdr[4].text = "Остаток"
+
+    for i, text in enumerate(headers):
+        hdr[i].text = text
+        hdr[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        hdr[i].paragraphs[0].runs[0].bold = True
+        set_cell_background(hdr[i], "EEECE1")
 
     for r in rows:
         c = t.add_row().cells
-        c[0].text = str(r.part_name)
-        c[1].text = str(r.brand_name)
-        c[2].text = str(r.part_category)
-        c[3].text = str(r.price)
-        c[4].text = str(r.stock_quantity)
+
+        values = [
+            str(r.part_name),
+            str(r.brand_name),
+            str(r.part_category),
+            str(r.price if r.price else 0),
+            str(r.stock_quantity if r.stock_quantity else 0)
+        ]
+
+
+
+        for i, val in enumerate(values):
+            c[i].text = val
+            c[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph("")
+
+    p_total1 = doc.add_paragraph()
+    p_total1.add_run(f"Итого записей: {len(rows)}").bold = True
 
     # --- Нижний колонтитул ---
     section = doc.sections[0]
