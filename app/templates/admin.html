@@ -245,12 +245,36 @@ th:last-child, td:last-child{
     <div class="card">
         <div class="section-title">
             <h2>Отчет: количество товаров по категориям</h2>
+
             <div class="row">
-                <a class="btn" href="/admin/reports/word">Экспорт Word</a>
-                <a class="btn primary" href="/admin/reports/excel">Экспорт Excel</a>
+                <a class="btn" href="/admin/reports/word?cat_products={{ selected_cat_products }}">Экспорт Word</a>
+                <a class="btn primary" href="/admin/reports/excel?cat_products={{ selected_cat_products }}">Экспорт Excel</a>
             </div>
         </div>
         <p class="muted">Источник данных: dbo.vw_report_products_per_category (через VIEW).</p>
+        <form method="GET" style="margin-bottom:20px;">
+
+    <!-- сохраняем даты и другие фильтры -->
+    <input type="hidden" name="from" value="{{ date_from }}">
+    <input type="hidden" name="to" value="{{ date_to }}">
+    <input type="hidden" name="status" value="{{ selected_status }}">
+    <input type="hidden" name="client" value="{{ selected_client }}">
+    <input type="hidden" name="category" value="{{ selected_category }}">
+
+    <label style="font-weight:bold;">Категория:</label>
+
+    <select name="cat_products" onchange="this.form.submit()">
+        <option value="all">Все</option>
+
+        {% for cat in categories_list %}
+            <option value="{{ cat.category_id }}"
+                {% if selected_cat_products == cat.category_id|string %}selected{% endif %}>
+                {{ cat.name }}
+            </option>
+        {% endfor %}
+    </select>
+
+</form>
 
         <table>
             <tr>
@@ -279,11 +303,70 @@ th:last-child, td:last-child{
         <div class="section-title">
             <h2>Отчет: заказы за период (статус + клиент + категория)</h2>
             <div class="row">
-                <a class="btn" href="/admin/reports/orders/word?from={{ date_from }}&to={{ date_to }}">Экспорт Word</a>
-                <a class="btn primary" href="/admin/reports/orders/excel?from={{ date_from }}&to={{ date_to }}">Экспорт Excel</a>
+                <a class="btn"
+   href="/admin/reports/orders/word?from={{ date_from }}&to={{ date_to }}&status={{ selected_status }}&client={{ selected_client }}&category={{ selected_category }}">
+   Экспорт Word
+</a>
+                <a class="btn primary"
+   href="/admin/reports/orders/excel?from={{ date_from }}&to={{ date_to }}&status={{ selected_status }}&client={{ selected_client }}&category={{ selected_category }}">
+   Экспорт Excel
+</a>
             </div>
         </div>
         <p class="muted">Источник данных: dbo.sp_report_orders_period_grouped</p>
+        <form method="GET" style="margin-bottom:20px; display:flex; gap:20px; flex-wrap:wrap;">
+
+    <!-- сохраняем даты -->
+    <input type="hidden" name="from" value="{{ date_from }}">
+    <input type="hidden" name="to" value="{{ date_to }}">
+
+    <!-- Статус -->
+    <div>
+        <label>Статус:</label>
+        <select name="status">
+            <option value="all">Все</option>
+            {% for s in statuses_list %}
+                <option value="{{ s }}"
+                    {% if selected_status == s %}selected{% endif %}>
+                    {{ s }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Клиент -->
+    <div>
+        <label>Клиент:</label>
+        <select name="client">
+            <option value="all">Все</option>
+            {% for c in clients_list %}
+                <option value="{{ c.email }}"
+                    {% if selected_client == c.email %}selected{% endif %}>
+                    {{ c.email }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Категория -->
+    <div>
+        <label>Категория:</label>
+        <select name="category">
+            <option value="all">Все</option>
+            {% for cat in categories_list %}
+                <option value="{{ cat.category_id }}"
+                    {% if selected_category == cat.category_id|string %}selected{% endif %}>
+                    {{ cat.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div>
+        <button class="btn primary" type="submit">Фильтровать</button>
+    </div>
+
+</form>
 
         <table>
             <tr>
@@ -316,11 +399,35 @@ th:last-child, td:last-child{
         <div class="section-title">
             <h2>Отчет: клиенты (история заказов)</h2>
             <div class="row">
-                <a class="btn" href="/admin/reports/clients/word">Экспорт Word</a>
-                <a class="btn primary" href="/admin/reports/clients/excel">Экспорт Excel</a>
+                <a class="btn"
+   href="/admin/reports/clients/word?email={{ selected_email or 'all' }}">
+   Экспорт Word
+</a>
+                <a class="btn primary"
+   href="/admin/reports/clients/excel?email={{ selected_email or 'all' }}">
+   Экспорт Excel
+</a>
             </div>
         </div>
         <p class="muted">Источник данных: dbo.sp_report_customers_orders_history</p>
+        <form method="GET" style="margin-bottom:20px;">
+    <label style="font-weight:bold;">Выберите клиента:</label>
+
+    <select name="email"
+            onchange="this.form.submit()"
+            style="padding:8px; border-radius:8px;">
+
+        <option value="all">Все</option>
+
+        {% for u in users_list %}
+            <option value="{{ u.email }}"
+                {% if selected_email == u.email %}selected{% endif %}>
+                {{ u.email }}
+            </option>
+        {% endfor %}
+
+    </select>
+</form>
 
         <table>
             <tr>
