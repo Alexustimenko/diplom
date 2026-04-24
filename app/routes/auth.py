@@ -1241,6 +1241,7 @@ def admin():
                     brand_id = int(brand_id) if brand_id else None
 
                     # ✅ проверка на дубль названия (без учета регистра и лишних пробелов по краям)
+                    # проверка дубля
                     cur.execute("""
                         SELECT TOP 1 product_id
                         FROM dbo.products
@@ -1250,8 +1251,10 @@ def admin():
 
                     if exists_row:
                         error = f"Товар с названием '{name}' уже существует"
-                    if price<=0:
+
+                    elif price <= 0:
                         error = "Нельзя добавить товар с ценой <= 0"
+
                     else:
                         cur.execute("""
                             EXEC dbo.sp_add_product
