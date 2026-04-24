@@ -4116,3 +4116,6 @@ def export_price_list():
         download_name=f"price_list_{today_str}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+@auth_bp.route("/faq")
+def faq():
+    return render_template("faq.html")
