@@ -111,12 +111,16 @@ const faqData = [
 {q:"Можно ли снять подлокотники?",a:"У некоторых моделей — да."},
 {q:"Есть ли гарантия?",a:"Обычно 12 месяцев."},
 {q:"Как быстро доставляют?",a:"Обычно 1–5 дней, зависит от склада."},
-{q:"Подойдёт ли кресло для стола с регулировкой высоты?",a:"Да, если диапазон газлифта позволяет настроить посадку."}
+{q:"Подойдёт ли кресло для стола с регулировкой высоты?",a:"Да, если диапазон газлифта позволяет настроить посадку."},
+{
+  q: "Руководство пользователя",
+  a: '<a href="https://docs.google.com/document/d/1Df1UM_sD2i058jP1GUnkh_mrwFJEPran/edit?usp=sharing&ouid=113011124616926993755&rtpof=true&sd=true" target="_blank">Открыть руководство пользователя</a>'
+}
 ];
 
 const container = document.getElementById("faq-container");
 
-faqData.forEach(item=>{
+faqData.forEach(item => {
     const block = document.createElement("div");
     block.className = "faq-item";
 
@@ -126,9 +130,9 @@ faqData.forEach(item=>{
 
     const answer = document.createElement("div");
     answer.className = "faq-answer";
-    answer.textContent = item.a;
+    answer.innerHTML = item.a;
 
-    question.addEventListener("click", ()=>{
+    question.addEventListener("click", () => {
         answer.style.display = answer.style.display === "block" ? "none" : "block";
     });
 
