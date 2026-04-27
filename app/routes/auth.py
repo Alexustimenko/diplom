@@ -8,6 +8,7 @@ from openpyxl import Workbook
 from datetime import datetime
 import re
 import pyodbc
+from flask import flash
 
 import smtplib
 from email.mime.text import MIMEText
@@ -3456,6 +3457,45 @@ def cart_checkout():
 
     rows = cur.fetchall()
     price_map = {int(r.product_id): float(r.price) for r in rows}
+    cur.execute(f"""
+        SELECT product_id, stock_quantity
+        FROM dbo.products
+        WHERE product_id IN ({placeholders})
+    """, *ids)
+
+    stock_rows = cur.fetchall()
+    stock_map = {int(r.product_id): int(r.stock_quantity) for r in stock_rows}
+
+    for pid_str, qty in cart.items():
+        pid = int(pid_str)
+        q = int(qty)
+
+        # минимальное
+        if q < 1:
+            flash("Минимальное количество товара — 1", "error")
+            conn.close()
+            return redirect("/cart")
+
+        # максимальное
+        if q > 100:
+            flash("Максимальное количество товара — 100", "error")
+            conn.close()
+            return redirect("/cart")
+
+        # проверка склада
+        available = stock_map.get(pid, 0)
+
+        if q > available:
+            cur.execute("SELECT name FROM dbo.products WHERE product_id=?", pid)
+            name_row = cur.fetchone()
+            product_name = name_row.name if name_row else "Товар"
+
+            flash(
+                f"Недостаточно товара '{product_name}' на складе. Доступно: {available}",
+                "error"
+            )
+            conn.close()
+            return redirect("/cart")
 
     total = 0.0
     for pid_str, qty in cart.items():
