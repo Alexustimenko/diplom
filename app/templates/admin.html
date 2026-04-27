@@ -243,316 +243,461 @@ th:last-child, td:last-child{
 
     <!-- 0) старый отчёт -->
     <div class="card">
-        <div class="section-title">
-            <h2>Отчет: количество товаров по категориям</h2>
+
+    <div class="section-title">
+        <h2>Отчет: количество товаров по категориям</h2>
+    </div>
+
+    <details style="margin-top:10px;">
+        <summary style="
+            font-weight:800;
+            cursor:pointer;
+            padding:12px 16px;
+            background:#CF1B03;
+            color:white;
+            border-radius:10px;
+            width:fit-content;">
+            Показать / скрыть детали отчета
+        </summary>
+
+        <div style="margin-top:20px;">
 
             <div class="row">
-                <a class="btn" href="/admin/reports/word?cat_products={{ selected_cat_products }}">Экспорт Word</a>
-                <a class="btn primary" href="/admin/reports/excel?cat_products={{ selected_cat_products }}">Экспорт Excel</a>
+                <a class="btn" href="/admin/reports/word?cat_products={{ selected_cat_products }}">
+                    Экспорт Word
+                </a>
+                <a class="btn primary" href="/admin/reports/excel?cat_products={{ selected_cat_products }}">
+                    Экспорт Excel
+                </a>
             </div>
+
+            <form method="GET" style="margin:20px 0;">
+
+                <!-- сохраняем даты и другие фильтры -->
+                <input type="hidden" name="from" value="{{ date_from }}">
+                <input type="hidden" name="to" value="{{ date_to }}">
+                <input type="hidden" name="status" value="{{ selected_status }}">
+                <input type="hidden" name="client" value="{{ selected_client }}">
+                <input type="hidden" name="category" value="{{ selected_category }}">
+
+                <label style="font-weight:bold;">Категория:</label>
+
+                <select name="cat_products" onchange="this.form.submit()">
+                    <option value="all">Все</option>
+
+                    {% for cat in categories_list %}
+                        <option value="{{ cat.category_id }}"
+                            {% if selected_cat_products == cat.category_id|string %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+            </form>
+
+            <table>
+                <tr>
+                    <th style="width:120px;">ID</th>
+                    <th>Категория</th>
+                    <th style="width:180px;">Количество</th>
+                </tr>
+
+                {% if report_rows %}
+                    {% for r in report_rows %}
+                    <tr>
+                        <td>{{ r.category_id }}</td>
+                        <td>{{ r.category_name }}</td>
+                        <td>{{ r.products_count }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="3" class="muted" style="padding:14px;">
+                            Нет данных отчёта.
+                        </td>
+                    </tr>
+                {% endif %}
+            </table>
+
         </div>
+    </details>
 
-        <form method="GET" style="margin-bottom:20px;">
-
-    <!-- сохраняем даты и другие фильтры -->
-    <input type="hidden" name="from" value="{{ date_from }}">
-    <input type="hidden" name="to" value="{{ date_to }}">
-    <input type="hidden" name="status" value="{{ selected_status }}">
-    <input type="hidden" name="client" value="{{ selected_client }}">
-    <input type="hidden" name="category" value="{{ selected_category }}">
-
-    <label style="font-weight:bold;">Категория:</label>
-
-    <select name="cat_products" onchange="this.form.submit()">
-        <option value="all">Все</option>
-
-        {% for cat in categories_list %}
-            <option value="{{ cat.category_id }}"
-                {% if selected_cat_products == cat.category_id|string %}selected{% endif %}>
-                {{ cat.name }}
-            </option>
-        {% endfor %}
-    </select>
-
-</form>
-
-        <table>
-            <tr>
-                <th style="width:120px;">ID</th>
-                <th>Категория</th>
-                <th style="width:180px;">Количество</th>
-            </tr>
-            {% if report_rows %}
-                {% for r in report_rows %}
-                <tr>
-                    <td>{{ r.category_id }}</td>
-                    <td>{{ r.category_name }}</td>
-                    <td>{{ r.products_count }}</td>
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr>
-                    <td colspan="3" class="muted" style="padding:14px;">Нет данных отчёта.</td>
-                </tr>
-            {% endif %}
-        </table>
-    </div>
+</div>
 
     <!-- 1) заказы за период (статус + клиент + категория) -->
     <div class="card">
-        <div class="section-title">
-            <h2>Отчет: заказы за период (статус + клиент + категория)</h2>
+
+    <div class="section-title">
+        <h2>Отчет: заказы за период (статус + клиент + категория)</h2>
+    </div>
+
+    <details style="margin-top:10px;">
+        <summary style="
+            font-weight:800;
+            cursor:pointer;
+            padding:12px 16px;
+            background:#CF1B03;
+            color:white;
+            border-radius:10px;
+            width:fit-content;">
+            Показать / скрыть детали отчета
+        </summary>
+
+        <div style="margin-top:20px;">
+
             <div class="row">
                 <a class="btn"
-   href="/admin/reports/orders/word?from={{ date_from }}&to={{ date_to }}&status={{ selected_status }}&client={{ selected_client }}&category={{ selected_category }}">
-   Экспорт Word
-</a>
+                   href="/admin/reports/orders/word?from={{ date_from }}&to={{ date_to }}&status={{ selected_status }}&client={{ selected_client }}&category={{ selected_category }}">
+                   Экспорт Word
+                </a>
+
                 <a class="btn primary"
-   href="/admin/reports/orders/excel?from={{ date_from }}&to={{ date_to }}&status={{ selected_status }}&client={{ selected_client }}&category={{ selected_category }}">
-   Экспорт Excel
-</a>
+                   href="/admin/reports/orders/excel?from={{ date_from }}&to={{ date_to }}&status={{ selected_status }}&client={{ selected_client }}&category={{ selected_category }}">
+                   Экспорт Excel
+                </a>
             </div>
-        </div>
 
-        <form method="GET" style="margin-bottom:20px; display:flex; gap:20px; flex-wrap:wrap;">
+            <form method="GET" style="margin:20px 0; display:flex; gap:20px; flex-wrap:wrap;">
 
-    <!-- сохраняем даты -->
-    <input type="hidden" name="from" value="{{ date_from }}">
-    <input type="hidden" name="to" value="{{ date_to }}">
+                <input type="hidden" name="from" value="{{ date_from }}">
+                <input type="hidden" name="to" value="{{ date_to }}">
 
-    <!-- Статус -->
-    <div>
-        <label>Статус:</label>
-        <select name="status">
-            <option value="all">Все</option>
-            {% for s in statuses_list %}
-                <option value="{{ s }}"
-                    {% if selected_status == s %}selected{% endif %}>
-                    {{ s }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
+                <!-- Статус -->
+                <div>
+                    <label>Статус:</label>
+                    <select name="status">
+                        <option value="all">Все</option>
+                        {% for s in statuses_list %}
+                            <option value="{{ s }}"
+                                {% if selected_status == s %}selected{% endif %}>
+                                {{ s }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-    <!-- Клиент -->
-    <div>
-        <label>Клиент:</label>
-        <select name="client">
-            <option value="all">Все</option>
-            {% for c in clients_list %}
-                <option value="{{ c.email }}"
-                    {% if selected_client == c.email %}selected{% endif %}>
-                    {{ c.email }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
+                <!-- Клиент -->
+                <div>
+                    <label>Клиент:</label>
+                    <select name="client">
+                        <option value="all">Все</option>
+                        {% for c in clients_list %}
+                            <option value="{{ c.email }}"
+                                {% if selected_client == c.email %}selected{% endif %}>
+                                {{ c.email }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-    <!-- Категория -->
-    <div>
-        <label>Категория:</label>
-        <select name="category">
-            <option value="all">Все</option>
-            {% for cat in categories_list %}
-                <option value="{{ cat.category_id }}"
-                    {% if selected_category == cat.category_id|string %}selected{% endif %}>
-                    {{ cat.name }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
+                <!-- Категория -->
+                <div>
+                    <label>Категория:</label>
+                    <select name="category">
+                        <option value="all">Все</option>
+                        {% for cat in categories_list %}
+                            <option value="{{ cat.category_id }}"
+                                {% if selected_category == cat.category_id|string %}selected{% endif %}>
+                                {{ cat.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-    <div>
-        <button class="btn primary" type="submit">Фильтровать</button>
-    </div>
+                <div>
+                    <button class="btn primary" type="submit">Фильтровать</button>
+                </div>
 
-</form>
+            </form>
 
-        <table>
-            <tr>
-                <th style="width:160px;">Статус</th>
-                <th style="width:240px;">Клиент</th>
-                <th>Категория</th>
-                <th style="width:140px;">Заказов</th>
-                <th style="width:140px;">Штук</th>
-                <th style="width:160px;">Выручка</th>
-            </tr>
-            {% if orders_rows %}
-                {% for r in orders_rows %}
+            <table>
                 <tr>
-                    <td>{{ r.status }}</td>
-                    <td>{{ r.client_email }}</td>
-                    <td>{{ r.category_name }}</td>
-                    <td>{{ r.orders_count }}</td>
-                    <td>{{ r.items_count }}</td>
-                    <td>{{ r.total_sum }}</td>
+                    <th style="width:160px;">Статус</th>
+                    <th style="width:240px;">Клиент</th>
+                    <th>Категория</th>
+                    <th style="width:140px;">Заказов</th>
+                    <th style="width:140px;">Штук</th>
+                    <th style="width:160px;">Выручка</th>
                 </tr>
-                {% endfor %}
-            {% else %}
-                <tr><td colspan="6" class="muted" style="padding:14px;">Нет данных за период.</td></tr>
-            {% endif %}
-        </table>
-    </div>
+
+                {% if orders_rows %}
+                    {% for r in orders_rows %}
+                    <tr>
+                        <td>{{ r.status }}</td>
+                        <td>{{ r.client_email }}</td>
+                        <td>{{ r.category_name }}</td>
+                        <td>{{ r.orders_count }}</td>
+                        <td>{{ r.items_count }}</td>
+                        <td>{{ r.total_sum }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="muted" style="padding:14px;">
+                            Нет данных за период.
+                        </td>
+                    </tr>
+                {% endif %}
+            </table>
+
+        </div>
+    </details>
+
+</div>
 
     <!-- 2) клиенты (история заказов) -->
     <div class="card">
-        <div class="section-title">
-            <h2>Отчет: клиенты (история заказов)</h2>
+
+    <div class="section-title">
+        <h2>Отчет: клиенты (история заказов)</h2>
+    </div>
+
+    <details style="margin-top:10px;">
+        <summary style="
+            font-weight:800;
+            cursor:pointer;
+            padding:12px 16px;
+            background:#CF1B03;
+            color:white;
+            border-radius:10px;
+            width:fit-content;">
+            Показать / скрыть детали отчета
+        </summary>
+
+        <div style="margin-top:20px;">
+
             <div class="row">
                 <a class="btn"
-   href="/admin/reports/clients/word?email={{ selected_email or 'all' }}">
-   Экспорт Word
-</a>
+                   href="/admin/reports/clients/word?email={{ selected_email or 'all' }}">
+                   Экспорт Word
+                </a>
+
                 <a class="btn primary"
-   href="/admin/reports/clients/excel?email={{ selected_email or 'all' }}">
-   Экспорт Excel
-</a>
+                   href="/admin/reports/clients/excel?email={{ selected_email or 'all' }}">
+                   Экспорт Excel
+                </a>
             </div>
-        </div>
 
-        <form method="GET" style="margin-bottom:20px;">
-    <label style="font-weight:bold;">Выберите клиента:</label>
+            <form method="GET" style="margin:20px 0;">
+                <label style="font-weight:bold;">Выберите клиента:</label>
 
-    <select name="email"
-            onchange="this.form.submit()"
-            style="padding:8px; border-radius:8px;">
+                <select name="email"
+                        onchange="this.form.submit()"
+                        style="padding:8px; border-radius:8px;">
 
-        <option value="all">Все</option>
+                    <option value="all">Все</option>
 
-        {% for u in users_list %}
-            <option value="{{ u.email }}"
-                {% if selected_email == u.email %}selected{% endif %}>
-                {{ u.email }}
-            </option>
-        {% endfor %}
+                    {% for u in users_list %}
+                        <option value="{{ u.email }}"
+                            {% if selected_email == u.email %}selected{% endif %}>
+                            {{ u.email }}
+                        </option>
+                    {% endfor %}
 
-    </select>
-</form>
+                </select>
+            </form>
 
-        <table>
-            <tr>
-                <th style="width:120px;">UserID</th>
-                <th style="width:260px;">Клиент</th>
-                <th style="width:140px;">Количество заказов</th>
-                <th style="width:180px;">Выручка от клиента</th>
-                <th style="width:160px;">Дата первого заказа</th>
-                <th style="width:160px;">Дата последнего заказа</th>
-            </tr>
-            {% if customers_rows %}
-                {% for r in customers_rows %}
+            <table>
                 <tr>
-                    <td>{{ r.user_id }}</td>
-                    <td>{{ r.email }}</td>
-                    <td>{{ r.orders_count }}</td>
-                    <td>{{ r.total_spent }}</td>
-                    <td>{{ r.first_order }}</td>
-                    <td>{{ r.last_order }}</td>
+                    <th style="width:120px;">UserID</th>
+                    <th style="width:260px;">Клиент</th>
+                    <th style="width:140px;">Количество заказов</th>
+                    <th style="width:180px;">Выручка от клиента</th>
+                    <th style="width:160px;">Дата первого заказа</th>
+                    <th style="width:160px;">Дата последнего заказа</th>
                 </tr>
-                {% endfor %}
-            {% else %}
-                <tr><td colspan="6" class="muted" style="padding:14px;">Нет заказов за период.</td></tr>
-            {% endif %}
-        </table>
-    </div>
+
+                {% if customers_rows %}
+                    {% for r in customers_rows %}
+                    <tr>
+                        <td>{{ r.user_id }}</td>
+                        <td>{{ r.email }}</td>
+                        <td>{{ r.orders_count }}</td>
+                        <td>{{ r.total_spent }}</td>
+                        <td>{{ r.first_order }}</td>
+                        <td>{{ r.last_order }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="muted" style="padding:14px;">
+                            Нет заказов за период.
+                        </td>
+                    </tr>
+                {% endif %}
+            </table>
+
+        </div>
+    </details>
+
+</div>
 
     <!-- 3) проданные товары за период -->
     <div class="card">
-        <div class="section-title">
-            <h2>Отчет: проданные товары за период</h2>
-            <div class="row">
-                <a class="btn" href="/admin/reports/products/word?from={{ date_from }}&to={{ date_to }}">Экспорт Word</a>
-                <a class="btn primary" href="/admin/reports/products/excel?from={{ date_from }}&to={{ date_to }}">Экспорт Excel</a>
-            </div>
-        </div>
 
-
-        <table>
-            <tr>
-                <th style="width:120px;">ProductID</th>
-                <th>Товар</th>
-                <th style="width:240px;">Категория</th>
-                <th style="width:160px;">Продано(шт)</th>
-                <th style="width:160px;">Выручка</th>
-            </tr>
-            {% if sold_rows %}
-                {% for r in sold_rows %}
-                <tr>
-                    <td>{{ r.product_id }}</td>
-                    <td>{{ r.name }}</td>
-                    <td>{{ r.category_name }}</td>
-                    <td>{{ r.sold_qty }}</td>
-                    <td>{{ r.revenue }}</td>
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr><td colspan="5" class="muted" style="padding:14px;">Нет продаж за период.</td></tr>
-            {% endif %}
-        </table>
+    <div class="section-title">
+        <h2>Отчет: проданные товары за период</h2>
     </div>
 
+    <details style="margin-top:10px;">
+        <summary style="
+            font-weight:800;
+            cursor:pointer;
+            padding:12px 16px;
+            background:#CF1B03;
+            color:white;
+            border-radius:10px;
+            width:fit-content;">
+            Показать / скрыть детали отчета
+        </summary>
+
+        <div style="margin-top:20px;">
+
+            <div class="row">
+                <a class="btn"
+                   href="/admin/reports/products/word?from={{ date_from }}&to={{ date_to }}">
+                   Экспорт Word
+                </a>
+
+                <a class="btn primary"
+                   href="/admin/reports/products/excel?from={{ date_from }}&to={{ date_to }}">
+                   Экспорт Excel
+                </a>
+            </div>
+
+            <table style="margin-top:20px;">
+                <tr>
+                    <th style="width:120px;">ProductID</th>
+                    <th>Товар</th>
+                    <th style="width:240px;">Категория</th>
+                    <th style="width:160px;">Продано(шт)</th>
+                    <th style="width:160px;">Выручка</th>
+                </tr>
+
+                {% if sold_rows %}
+                    {% for r in sold_rows %}
+                    <tr>
+                        <td>{{ r.product_id }}</td>
+                        <td>{{ r.name }}</td>
+                        <td>{{ r.category_name }}</td>
+                        <td>{{ r.sold_qty }}</td>
+                        <td>{{ r.revenue }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="muted" style="padding:14px;">
+                            Нет продаж за период.
+                        </td>
+                    </tr>
+                {% endif %}
+            </table>
+
+        </div>
+    </details>
+
+</div>
+
 <div class="card">
+
   <div class="section-title">
     <h2>Отчет: комплектация товаров (запчасти по бренду)</h2>
-   {% if target_category_id %}
-  <div class="row">
-    <a class="btn"
-       href="/admin/reports/parts/word?target_category_id={{ target_category_id }}&parts_brand_id={{ parts_brand_id or '' }}">
-       Экспорт Word
-    </a>
-    <a class="btn primary"
-       href="/admin/reports/parts/excel?target_category_id={{ target_category_id }}&parts_brand_id={{ parts_brand_id or '' }}">
-       Экспорт Excel
-    </a>
-  </div>
-{% endif %}
   </div>
 
-  <form method="GET" action="/admin/reports" class="row" style="margin-top:10px;">
-    <label style="font-weight:900;color:#0b3b3b;">Категория товара:</label>
-    <select name="target_category_id">
-      <option value="">(выбери)</option>
-      {% for c in all_categories %}
-        <option value="{{ c.category_id }}" {% if target_category_id|int == c.category_id %}selected{% endif %}>{{ c.name }}</option>
-      {% endfor %}
-    </select>
+  <details style="margin-top:10px;">
+    <summary style="
+        font-weight:800;
+        cursor:pointer;
+        padding:12px 16px;
+        background:#CF1B03;
+        color:white;
+        border-radius:10px;
+        width:fit-content;">
+        Показать / скрыть детали отчета
+    </summary>
 
-    <label style="font-weight:900;color:#0b3b3b;">Бренд:</label>
-    <select name="parts_brand_id">
-  <option value="">(все бренды)</option>
-  {% for b in all_brands %}
-    <option value="{{ b.id_brand }}" {% if parts_brand_id|int == b.id_brand %}selected{% endif %}>{{ b.name }}</option>
-  {% endfor %}
-</select>
+    <div style="margin-top:20px;">
 
-    <button class="btn primary" type="submit">Показать</button>
-  </form>
+      {% if target_category_id %}
+      <div class="row">
+        <a class="btn"
+           href="/admin/reports/parts/word?target_category_id={{ target_category_id }}&parts_brand_id={{ parts_brand_id or '' }}">
+           Экспорт Word
+        </a>
+        <a class="btn primary"
+           href="/admin/reports/parts/excel?target_category_id={{ target_category_id }}&parts_brand_id={{ parts_brand_id or '' }}">
+           Экспорт Excel
+        </a>
+      </div>
+      {% endif %}
 
+      <form method="GET" action="/admin/reports" class="row" style="margin-top:20px; gap:20px; flex-wrap:wrap;">
 
+        <div>
+          <label style="font-weight:900;color:#0b3b3b;">Категория товара:</label>
+          <select name="target_category_id">
+            <option value="">(выбери)</option>
+            {% for c in all_categories %}
+              <option value="{{ c.category_id }}"
+                {% if target_category_id|int == c.category_id %}selected{% endif %}>
+                {{ c.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
 
-  <table>
-    <tr>
-      <th style="width:120px;">PartID</th>
-      <th>Запчасть</th>
-      <th style="width:180px;">Бренд</th>
-      <th style="width:240px;">Категория запчасти</th>
-      <th style="width:140px;">Цена</th>
-      <th style="width:140px;">Остаток</th>
-    </tr>
-    {% if parts_rows %}
-      {% for r in parts_rows %}
-      <tr>
-        <td>{{ r.part_id }}</td>
-        <td>{{ r.part_name }}</td>
-        <td>{{ r.brand_name }}</td>
-        <td>{{ r.part_category }}</td>
-        <td>{{ r.price }}</td>
-        <td>{{ r.stock_quantity }}</td>
-      </tr>
-      {% endfor %}
-    {% else %}
-      <tr><td colspan="6" class="muted" style="padding:14px;">Нет данных (выбери категорию и бренд).</td></tr>
-    {% endif %}
-  </table>
+        <div>
+          <label style="font-weight:900;color:#0b3b3b;">Бренд:</label>
+          <select name="parts_brand_id">
+            <option value="">(все бренды)</option>
+            {% for b in all_brands %}
+              <option value="{{ b.id_brand }}"
+                {% if parts_brand_id|int == b.id_brand %}selected{% endif %}>
+                {{ b.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <button class="btn primary" type="submit">Показать</button>
+        </div>
+
+      </form>
+
+      <table style="margin-top:20px;">
+        <tr>
+          <th style="width:120px;">PartID</th>
+          <th>Запчасть</th>
+          <th style="width:180px;">Бренд</th>
+          <th style="width:240px;">Категория запчасти</th>
+          <th style="width:140px;">Цена</th>
+          <th style="width:140px;">Остаток</th>
+        </tr>
+
+        {% if parts_rows %}
+          {% for r in parts_rows %}
+          <tr>
+            <td>{{ r.part_id }}</td>
+            <td>{{ r.part_name }}</td>
+            <td>{{ r.brand_name }}</td>
+            <td>{{ r.part_category }}</td>
+            <td>{{ r.price }}</td>
+            <td>{{ r.stock_quantity }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="muted" style="padding:14px;">
+              Нет данных (выбери категорию и бренд).
+            </td>
+          </tr>
+        {% endif %}
+      </table>
+
+    </div>
+  </details>
+
 </div>
 {% else %}
 
