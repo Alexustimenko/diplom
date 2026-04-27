@@ -73,7 +73,21 @@
     <div class="card">
 
         <h2 style="margin:0;">Корзина</h2>
-
+        {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div style="
+          background:#CF1B03;
+          color:white;
+          padding:14px;
+          border-radius:10px;
+          margin-top:15px;
+          font-weight:900;">
+          {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
         {% if not items or items|length == 0 %}
             <div style="margin-top:14px; font-weight:900;">Корзина пустая.</div>
         {% else %}
@@ -94,7 +108,7 @@
                     <td>{{ it.name }}</td>
                     <td>{{ "%.2f"|format(it.price) }} Бел.руб.</td>
                     <td>
-                        <input class="qty" name="qty_{{ it.product_id }}" value="{{ it.qty }}">
+                        <input class="qty" name="qty_{{ it.product_id }}" value="{{ it.qty }}" type="number" min="1" max="100" required>
                     </td>
                     <td>{{ "%.2f"|format(it.line_total) }} Бел.руб.</td>
                     <td>
@@ -215,6 +229,28 @@
         {% endif %}
     </div>
 </div>
+<script>
+document.querySelector('form[action="/cart/checkout"]')
+.addEventListener("submit", function(e){
 
+    const qtyInputs = document.querySelectorAll(".qty");
+
+    for (let input of qtyInputs) {
+        const val = parseInt(input.value);
+
+        if (val < 1) {
+            alert("Минимальное количество товара — 1");
+            e.preventDefault();
+            return;
+        }
+
+        if (val > 100) {
+            alert("Максимальное количество товара — 100");
+            e.preventDefault();
+            return;
+        }
+    }
+});
+</script>
 </body>
 </html>
