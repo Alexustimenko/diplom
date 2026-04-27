@@ -125,10 +125,7 @@
                 <input name="price_to" value="{{ price_to or '' }}" placeholder="например 500">
             </div>
 
-            <label style="display:flex; gap:10px; align-items:center; margin-bottom:2px;">
-                <input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}>
-                Только в наличии
-            </label>
+
 
             <button class="btn primary" type="submit">Подобрать</button>
         </form>
