@@ -251,7 +251,7 @@ th:last-child, td:last-child{
                 <a class="btn primary" href="/admin/reports/excel?cat_products={{ selected_cat_products }}">Экспорт Excel</a>
             </div>
         </div>
-        <p class="muted">Источник данных: dbo.vw_report_products_per_category (через VIEW).</p>
+
         <form method="GET" style="margin-bottom:20px;">
 
     <!-- сохраняем даты и другие фильтры -->
@@ -313,7 +313,7 @@ th:last-child, td:last-child{
 </a>
             </div>
         </div>
-        <p class="muted">Источник данных: dbo.sp_report_orders_period_grouped</p>
+
         <form method="GET" style="margin-bottom:20px; display:flex; gap:20px; flex-wrap:wrap;">
 
     <!-- сохраняем даты -->
@@ -409,7 +409,7 @@ th:last-child, td:last-child{
 </a>
             </div>
         </div>
-        <p class="muted">Источник данных: dbo.sp_report_customers_orders_history</p>
+
         <form method="GET" style="margin-bottom:20px;">
     <label style="font-weight:bold;">Выберите клиента:</label>
 
@@ -464,7 +464,7 @@ th:last-child, td:last-child{
                 <a class="btn primary" href="/admin/reports/products/excel?from={{ date_from }}&to={{ date_to }}">Экспорт Excel</a>
             </div>
         </div>
-        <p class="muted">Источник данных: dbo.sp_report_sold_products_period</p>
+
 
         <table>
             <tr>
@@ -527,9 +527,7 @@ th:last-child, td:last-child{
     <button class="btn primary" type="submit">Показать</button>
   </form>
 
-  <p class="muted" style="margin-top:10px;">
-    Логика: берём товары из ветки категорий “запчасти” + фильтр по бренду.
-  </p>
+
 
   <table>
     <tr>
