@@ -483,13 +483,20 @@
     </select>
 
     <select name="color" class="search" style="max-width:220px;">
-        <option value="">(любой цвет)</option>
-        <option value="черный" {% if (color or '')|lower == 'черный' %}selected{% endif %}>Черный</option>
-        <option value="белый" {% if (color or '')|lower == 'белый' %}selected{% endif %}>Белый</option>
-        <option value="серый" {% if (color or '')|lower == 'серый' %}selected{% endif %}>Серый</option>
-        <option value="синий" {% if (color or '')|lower == 'синий' %}selected{% endif %}>Синий</option>
-        <option value="красный" {% if (color or '')|lower == 'красный' %}selected{% endif %}>Красный</option>
-    </select>
+    <option value="">(любой цвет)</option>
+
+    <option value="черный" {% if (color or '')|lower == 'черный' %}selected{% endif %}>Черный</option>
+    <option value="белый" {% if (color or '')|lower == 'белый' %}selected{% endif %}>Белый</option>
+    <option value="серый" {% if (color or '')|lower == 'серый' %}selected{% endif %}>Серый</option>
+    <option value="синий" {% if (color or '')|lower == 'синий' %}selected{% endif %}>Синий</option>
+    <option value="красный" {% if (color or '')|lower == 'красный' %}selected{% endif %}>Красный</option>
+
+    <option value="коричневый" {% if (color or '')|lower == 'коричневый' %}selected{% endif %}>Коричневый</option>
+    <option value="оранжевый" {% if (color or '')|lower == 'оранжевый' %}selected{% endif %}>Оранжевый</option>
+    <option value="зеленый" {% if (color or '')|lower == 'зеленый' %}selected{% endif %}>Зеленый</option>
+    <option value="фиолетовый" {% if (color or '')|lower == 'фиолетовый' %}selected{% endif %}>Фиолетовый</option>
+    <option value="розовый" {% if (color or '')|lower == 'розовый' %}selected{% endif %}>Розовый</option>
+</select>
 
     <select name="material" class="search" style="max-width:240px;">
         <option value="">(любой материал)</option>
