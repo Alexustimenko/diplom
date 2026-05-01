@@ -739,6 +739,59 @@ def index():
     """, *(params + [offset, per_page]))
 
     products = cur.fetchall()
+    # ==========================
+    # 🔥 АНАЛОГИ если пусто
+    # ==========================
+    analogs = []
+
+    if not products:
+
+        analog_where = ["is_active = 1"]
+        analog_params = []
+
+        # материал (если указан)
+        if material_raw:
+            analog_where.append("LOWER(ISNULL(description,'')) LIKE ?")
+            analog_params.append(f"%материал:%{material_raw.lower()}%")
+
+        # цена от
+        if price_from_raw:
+            try:
+                pf = float(price_from_raw.replace(",", "."))
+                analog_where.append("price >= ?")
+                analog_params.append(pf)
+            except:
+                pass
+
+        # цена до
+        if price_to_raw:
+            try:
+                pt = float(price_to_raw.replace(",", "."))
+                analog_where.append("price <= ?")
+                analog_params.append(pt)
+            except:
+                pass
+
+        analog_sql = "WHERE " + " AND ".join(analog_where)
+
+        cur.execute(f"""
+            SELECT TOP 3 *
+            FROM dbo.vw_products
+            {analog_sql}
+            ORDER BY NEWID()
+        """, *analog_params)
+
+        analogs = cur.fetchall()
+
+        # если даже так ничего — просто 3 случайных
+        if not analogs:
+            cur.execute("""
+                SELECT TOP 3 *
+                FROM dbo.vw_products
+                WHERE is_active = 1
+                ORDER BY NEWID()
+            """)
+            analogs = cur.fetchall()
     # ✅ ХИТЫ ПРОДАЖ (TOP-3)
     cur.execute("EXEC dbo.sp_top3_best_sellers")
     hits = cur.fetchall()
@@ -747,6 +800,7 @@ def index():
     return render_template(
         "index.html",
         products=products,
+        analogs=analogs,
 
         # ✅ ВАЖНО: в шаблон отдаём q_raw, чтобы пробелы не исчезали из input
         q=q_raw,
