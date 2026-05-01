@@ -546,50 +546,126 @@
 
     </div>
 
-    {% if products is none or products == [] %}
-        <div class="empty">
-            Товары не найдены.
-            <div class="muted">Проверь: есть ли записи в dbo.vw_products и is_active = 1.</div>
+    {% if not products %}
+
+    <div class="empty">
+        Товары не найдены.
+        <div class="muted" style="margin-top:8px;">
+            Мы предлагаем эти прекрасные аналоги:
         </div>
-    {% else %}
-        <div class="grid" id="grid">
-            {% for p in products %}
+    </div>
+
+    {% if analogs and analogs|length > 0 %}
+        <div class="grid" style="margin-top:20px;">
+            {% for p in analogs %}
+                <div class="card"
+                     onclick="window.location.href='/product/{{ p.product_id }}';">
+
+                    <img class="thumb"
+                         src="/product_image/{{ p.product_id }}"
+                         alt="">
+
+                    <div class="name">{{ p.name }}</div>
+
+                    <div class="meta">
+                        {{ p.category_name if p.category_name else "-" }} /
+                        {{ p.brand_name if p.brand_name else "-" }}
+                    </div>
+
+                    <div class="prices">
+                        {% if p.old_price %}
+                            <div class="old">
+                                {{ p.old_price }}
+                                <span style="font-weight:800; color:#999;">Бел.руб.</span>
+                            </div>
+                        {% endif %}
+                        <div class="price">
+                            {{ p.price }}
+                            <span style="font-weight:900; color:#CF1B03; font-size:16px;">
+                                Бел.руб.
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- КНОПКА -->
+                    <div style="margin-top:14px;">
+                        {% if session.get("user_id") %}
+                            <form method="POST"
+                                  action="/cart/add/{{ p.product_id }}"
+                                  style="margin:0;"
+                                  onclick="event.stopPropagation();">
+                                <input type="hidden" name="qty" value="1">
+                                <button class="btn primary buy"
+                                        type="submit"
+                                        style="width:100%;">
+                                    В корзину
+                                </button>
+                            </form>
+                        {% else %}
+                            <a class="btn primary buy"
+                               href="/login"
+                               style="width:100%; text-align:center;"
+                               onclick="event.stopPropagation();">
+                                Войти, чтобы купить
+                            </a>
+                        {% endif %}
+                    </div>
+
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+{% else %}
+
+    <div class="grid" id="grid">
+        {% for p in products %}
             <div class="card"
                  onclick="window.location.href='/product/{{ p.product_id }}';"
                  data-name="{{ (p.name or '')|lower }}"
                  data-desc="{{ (p.description or '')|lower }}"
                  data-brand="{{ (p.brand_name or '')|lower }}"
-                 data-cat="{{ (p.category_name or '')|lower }}"
-            >
+                 data-cat="{{ (p.category_name or '')|lower }}">
+
                 <img class="thumb"
                      src="/product_image/{{ p.product_id }}"
-                     alt=""
-                     onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22240%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23f2f2f2%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-family=%22Arial%22 font-size=%2216%22>No image</text></svg>';">
+                     alt="">
+
                 <div class="name">{{ p.name }}</div>
 
-                <div class="desc" title="{{ p.description if p.description else '' }}">
-                    {{ p.description if p.description else "" }}
-                </div>
-
                 <div class="meta">
-                    {{ p.category_name if p.category_name else "-" }} / {{ p.brand_name if p.brand_name else "-" }}
+                    {{ p.category_name if p.category_name else "-" }} /
+                    {{ p.brand_name if p.brand_name else "-" }}
                 </div>
 
-              <div class="prices">
-  {% if p.old_price %}
-    <div class="old">{{ p.old_price }} <span style="font-weight:800; color:#999;">Бел.руб.</span></div>
-  {% endif %}
-  <div class="price">{{ p.price }} <span style="font-weight:900; color:#CF1B03; font-size:16px;">Бел.руб.</span></div>
-</div>
+                <div class="prices">
+                    {% if p.old_price %}
+                        <div class="old">
+                            {{ p.old_price }}
+                            <span style="font-weight:800; color:#999;">Бел.руб.</span>
+                        </div>
+                    {% endif %}
+                    <div class="price">
+                        {{ p.price }}
+                        <span style="font-weight:900; color:#CF1B03; font-size:16px;">
+                            Бел.руб.
+                        </span>
+                    </div>
+                </div>
 
-                <!-- ✅ КНОПКА В КОРЗИНУ (только для авторизованных) -->
+                <!-- КНОПКА -->
                 <div style="margin-top:14px;">
                     {% if session.get("user_id") %}
-                        <form method="POST" action="/cart/add/{{ p.product_id }}"
+                        <form method="POST"
+                              action="/cart/add/{{ p.product_id }}"
                               style="margin:0;"
                               onclick="event.stopPropagation();">
                             <input type="hidden" name="qty" value="1">
-                            <button class="btn primary buy" type="submit" style="width:100%;">В корзину</button>
+                            <button class="btn primary buy"
+                                    type="submit"
+                                    style="width:100%;">
+                                В корзину
+                            </button>
                         </form>
                     {% else %}
                         <a class="btn primary buy"
@@ -600,10 +676,15 @@
                         </a>
                     {% endif %}
                 </div>
+
             </div>
-            {% endfor %}
-        </div>
-    {% endif %}
+        {% endfor %}
+    </div>
+
+{% endif %}
+
+                    <!-- ✅ КНОПКА В КОРЗИНУ (только для авторизованных) -->
+
     <div style="display:flex; gap:10px; justify-content:center; align-items:center; margin:18px 0;">
   {% set qs = "q=" ~ (q or "") ~
             "&category_id=" ~ (selected_category_id or "") ~
