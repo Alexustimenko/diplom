@@ -191,6 +191,89 @@ th:last-child, td:last-child{
     border-radius:8px;
     font-weight:900;
 }
+/* ===== MODAL ===== */
+
+.modal{
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-content{
+    background: #fff;
+    width: 650px;
+    max-width: 95%;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 15px 40px rgba(0,0,0,.35);
+    animation: modalFade .2s ease;
+}
+
+@keyframes modalFade{
+    from{ transform: translateY(10px); opacity:0; }
+    to{ transform: translateY(0); opacity:1; }
+}
+
+.modal-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-weight:900;
+    font-size:18px;
+    color:#CF1B03;
+    margin-bottom:15px;
+}
+
+.modal-close{
+    background:#CF1B03;
+    border:none;
+    color:#fff;
+    font-size:18px;
+    width:32px;
+    height:32px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.modal-close:hover{
+    opacity:.85;
+}
+
+/* форма внутри модала */
+
+.modal-content .edit-form{
+    width:100%;
+}
+
+.modal-content .row{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:10px;
+    margin-bottom:10px;
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content textarea{
+    width:100%;
+    padding:8px;
+    border-radius:8px;
+    border:1px solid #ddd;
+    font-weight:700;
+    box-sizing:border-box;
+}
+
+.modal-content textarea{
+    min-height:100px;
+}
+
+.modal-content .btn{
+    margin-top:10px;
+}
     </style>
 </head>
 
@@ -934,48 +1017,19 @@ th:last-child, td:last-child{
         <td>
           <div class="actions">
             <!-- EDIT -->
-            <details>
-              <summary class="btn">Редактировать</summary>
-              <form method="POST" enctype="multipart/form-data" class="edit-form">
-                <input type="hidden" name="action" value="edit_product">
-                <input type="hidden" name="product_id" value="{{ p.product_id }}">
-
-                <div class="row">
-                  <input name="name" value="{{ p.name }}" required>
-                  <input name="price" value="{{ p.price }}" required>
-                  <input name="old_price" value="{{ p.old_price if p.old_price else '' }}" placeholder="Старая цена (опц.)">
-                  <input name="stock" value="{{ p.stock_quantity }}" required>
-
-                  <select name="category_id">
-                    <option value="">(категория не выбрана)</option>
-                    {% for c in categories %}
-                      <option value="{{ c.category_id }}" {% if p.category_id == c.category_id %}selected{% endif %}>{{ c.name }}</option>
-                    {% endfor %}
-                  </select>
-
-                  <select name="brand_id">
-                    <option value="">(бренд не выбран)</option>
-                    {% for b in brands %}
-                      <option value="{{ b.id_brand }}" {% if p.id_brand == b.id_brand %}selected{% endif %}>{{ b.name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-
-                <div class="desc-wrap">
-                  <textarea name="description" placeholder="Описание (опционально)">{{ p.description if p.description else '' }}</textarea>
-                </div>
-
-                <div class="row">
-                  <input type="file" name="images" multiple>
-                  <label style="display:flex; gap:10px; align-items:center; font-weight:900; color:#0b3b3b;">
-                    <input type="checkbox" name="replace_images" value="1">
-                    Заменить картинки (удалить старые)
-                  </label>
-                  <button class="btn primary" type="submit">Сохранить</button>
-                </div>
-              </form>
-            </details>
-
+            <button class="btn"
+        type="button"
+        onclick="openModal(this)"
+        data-id="{{ p.product_id }}"
+        data-name="{{ p.name }}"
+        data-price="{{ p.price }}"
+        data-old="{{ p.old_price if p.old_price else '' }}"
+        data-stock="{{ p.stock_quantity }}"
+        data-desc="{{ p.description if p.description else '' }}"
+        data-category="{{ p.category_id }}"
+        data-brand="{{ p.id_brand }}">
+    Редактировать
+</button>
             <!-- DELETE -->
             <form method="POST">
               <input type="hidden" name="action" value="delete_product">
@@ -1239,6 +1293,108 @@ function toggleDetails(id){
     const el = document.getElementById(id);
     el.style.display = el.style.display === "none" ? "table-row" : "none";
 }
+</script>
+<div id="editModal" class="modal">
+  <div class="modal-content">
+
+    <div class="modal-header">
+      <span>Редактирование товара</span>
+      <button type="button" class="modal-close" onclick="closeModal()">×</button>
+    </div>
+
+    <div id="modalBody"></div>
+
+  </div>
+</div>
+
+<script>
+const ALL_CATEGORIES = [
+{% for c in categories %}
+    { id: {{ c.category_id }}, name: "{{ c.name|escape }}" },
+{% endfor %}
+];
+
+const ALL_BRANDS = [
+{% for b in brands %}
+    { id: {{ b.id_brand }}, name: "{{ b.name|escape }}" },
+{% endfor %}
+];
+</script>
+<script>
+function openModal(btn){
+    const modal = document.getElementById("editModal");
+    const body = document.getElementById("modalBody");
+
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    const price = btn.dataset.price;
+    const old = btn.dataset.old;
+    const stock = btn.dataset.stock;
+    const desc = btn.dataset.desc;
+    const categoryId = btn.dataset.category;
+    const brandId = btn.dataset.brand;
+
+    // формируем options
+    let categoryOptions = '<option value="">(категория не выбрана)</option>';
+    ALL_CATEGORIES.forEach(c => {
+        categoryOptions += `
+            <option value="${c.id}" ${c.id == categoryId ? "selected" : ""}>
+                ${c.name}
+            </option>`;
+    });
+
+    let brandOptions = '<option value="">(бренд не выбран)</option>';
+    ALL_BRANDS.forEach(b => {
+        brandOptions += `
+            <option value="${b.id}" ${b.id == brandId ? "selected" : ""}>
+                ${b.name}
+            </option>`;
+    });
+
+    body.innerHTML = `
+        <form method="POST" enctype="multipart/form-data" class="edit-form">
+            <input type="hidden" name="action" value="edit_product">
+            <input type="hidden" name="product_id" value="${id}">
+
+            <div class="row">
+                <input name="name" value="${name}" required>
+                <input name="price" value="${price}" required>
+                <input name="old_price" value="${old || ''}" placeholder="Старая цена">
+                <input name="stock" value="${stock}" required>
+            </div>
+
+            <div class="row">
+                <select name="category_id">${categoryOptions}</select>
+                <select name="brand_id">${brandOptions}</select>
+            </div>
+
+            <textarea name="description">${desc || ''}</textarea>
+
+            <div class="row">
+                <input type="file" name="images" multiple>
+                <label style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" name="replace_images" value="1">
+                    Заменить картинки
+                </label>
+            </div>
+
+            <button class="btn primary" type="submit">Сохранить</button>
+        </form>
+    `;
+
+    modal.style.display = "flex";
+}
+
+function closeModal(){
+    document.getElementById("editModal").style.display = "none";
+}
+
+window.addEventListener("click", function(e){
+    const modal = document.getElementById("editModal");
+    if(e.target === modal){
+        closeModal();
+    }
+});
 </script>
 </body>
 </html>
