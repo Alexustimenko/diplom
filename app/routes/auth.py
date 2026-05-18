@@ -1736,8 +1736,11 @@ def export_excel():
             ws.cell(row=rr, column=cc).border = border
 
     total_row = last_row + 2
-    ws.cell(row=total_row, column=1, value="Итого записей:").font = bold
-    ws.cell(row=total_row, column=2, value=len(rows)).font = bold
+
+    total_products = sum(int(r.products_count) for r in rows)
+
+    ws.cell(row=total_row, column=1, value="Итого товаров:").font = bold
+    ws.cell(row=total_row, column=2, value=total_products).font = bold
 
     # закрепим верх (строка после заголовка таблицы)
     ws.freeze_panes = ws["A12"]
@@ -1930,7 +1933,10 @@ def export_word():
             for p in cell.paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     doc.add_paragraph("")
-    p_total = doc.add_paragraph(f"Итого записей: {len(rows)}")
+
+    total_products = sum(int(r.products_count) for r in rows)
+
+    p_total = doc.add_paragraph(f"Итого товаров: {total_products}")
     p_total.runs[0].bold = True
 
     # 3) отдаём файл
