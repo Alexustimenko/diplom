@@ -164,6 +164,7 @@
 
 </div>
                             <div id="print{{ o.order_id }}" class="print-area">
+     <p><b>Клиент:</b> {{ email }}</p>
     <h2>Заказ № {{ o.order_id }}</h2>
     <p>Дата: {{ o.created_at.strftime("%d.%m.%Y %H:%M") }}</p>
 
