@@ -212,13 +212,24 @@
             {% endif %}
 
             <details>
-                <summary>Способ доставки</summary>
-                <div style="margin-top:10px; display:grid; gap:6px;">
-                    <label><input type="radio" name="delivery_method" value="pickup" checked> Самовывоз</label>
-                    <label><input type="radio" name="delivery_method" value="minsk"> Курьерская доставка по Минску</label>
-                    <label><input type="radio" name="delivery_method" value="belarus"> Доставка по Беларуси</label>
-                </div>
-            </details>
+    <summary>Способ доставки</summary>
+    <div style="margin-top:10px; display:grid; gap:6px;">
+        <label>
+            <input type="radio" name="delivery_method" value="pickup" id="deliveryPickup">
+            Самовывоз
+        </label>
+
+        <label>
+            <input type="radio" name="delivery_method" value="minsk" id="deliveryMinsk" checked>
+            Курьерская доставка по Минску
+        </label>
+
+        <label>
+            <input type="radio" name="delivery_method" value="belarus" id="deliveryBelarus">
+            Доставка по Беларуси
+        </label>
+    </div>
+</details>
 
             <div class="actions">
                 <button class="btn primary" type="submit">Купить</button>
@@ -251,6 +262,35 @@ document.querySelector('form[action="/cart/checkout"]')
         }
     }
 });
+</script>
+<script>
+const addressInput = document.getElementById("addressInput");
+const deliveryRadios = document.querySelectorAll("input[name='delivery_method']");
+
+function updateAddressField() {
+    const selected = document.querySelector("input[name='delivery_method']:checked");
+
+    if (!selected) return;
+
+    if (selected.value === "pickup") {
+        addressInput.value = "Самовывоз";
+        addressInput.readOnly = true;
+        addressInput.style.background = "#f2f2f2";
+    } else {
+        if (addressInput.value === "Самовывоз") {
+            addressInput.value = "";
+        }
+        addressInput.readOnly = false;
+        addressInput.style.background = "white";
+    }
+}
+
+deliveryRadios.forEach(radio => {
+    radio.addEventListener("change", updateAddressField);
+});
+
+// чтобы при загрузке тоже срабатывало
+updateAddressField();
 </script>
 </body>
 </html>
