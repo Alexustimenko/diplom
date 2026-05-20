@@ -3025,7 +3025,7 @@ def export_parts_excel():
     # --- получаем название бренда (если выбран) ---
     brand_name = "Все бренды"
     if bval:
-        cur.execute("SELECT name FROM brands WHERE id_brand = ?", bval)
+        cur.execute("SELECT name FROM brand WHERE id_brand = ?", bval)
         brand_row = cur.fetchone()
         if brand_row:
             brand_name = brand_row.name
@@ -3209,7 +3209,7 @@ def export_parts_word():
     # --- получаем название бренда ---
     brand_name = "Все бренды"
     if bval:
-        cur.execute("SELECT name FROM brands WHERE id_brand = ?", bval)
+        cur.execute("SELECT name FROM brand WHERE id_brand = ?", bval)
         brand_row = cur.fetchone()
         if brand_row:
             brand_name = brand_row.name
