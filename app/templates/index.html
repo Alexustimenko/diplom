@@ -104,6 +104,7 @@
             color:inherit;
             cursor:pointer;
             transition:transform .08s ease;
+             overflow: hidden;   /* ДОБАВИТЬ ЭТУ СТРОКУ */
         }
         .card:hover{ transform: translateY(-1px); }
         .card:active{ transform: translateY(0px); }
@@ -382,6 +383,11 @@
 
 .footer a:hover{
     color:#CF1B03;
+}
+        .card .btn{
+    display:block;
+    width:100%;
+    box-sizing:border-box;
 }
     </style>
 </head>
