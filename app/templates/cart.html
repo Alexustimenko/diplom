@@ -181,7 +181,9 @@
                 <input class="checkout-input"
                        name="phone"
                        placeholder="+375 (__) ___ __ __"
-                       required>
+                       required
+                       pattern="\+375\s?\((25|29|33|44)\)\s?\d{3}\s?\d{2}\s?\d{2}"
+                       title="Введите номер в формате: +375 (29) 123 45 67">
 
                 <input class="checkout-input"
                        id="addressInput"
