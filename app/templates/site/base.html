@@ -7,6 +7,7 @@
   <meta name="description" content="{{ meta_description|default('Офисная мебель и комплектующие Ролмарк.', true) }}">
   {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='legacy-unify.css') }}">
 </head>
 <body>
   <a class="skip-link" href="#content">К содержанию</a>
@@ -43,6 +44,10 @@
             <a class="mega-all" href="{{ url_for('site.catalog') }}">Весь каталог</a>
             {% for nav_category in public_categories %}
               <a href="{{ url_for('site.category', category_slug=nav_category.slug) }}">{{ nav_category.name }}</a>
+            {% endfor %}
+            {% if public_brands %}<span class="mega-label">Бренды</span>{% endif %}
+            {% for nav_brand in public_brands if nav_brand.source == 'clerk' %}
+              <a href="{{ url_for('site.brand_page', brand_slug=nav_brand.slug) }}">{{ nav_brand.name }}</a>
             {% endfor %}
           </div>
         </details>
@@ -86,9 +91,9 @@
       </section>
       <section>
         <h2>Каталог</h2>
-        <a href="{{ url_for('site.category', category_slug='kompyuternye_kresla') }}">Компьютерные кресла</a>
-        <a href="{{ url_for('site.category', category_slug='kreslo-rukovoditelya') }}">Кресла руководителя</a>
-        <a href="{{ url_for('site.category', category_slug='komplektuyushchiye-dlia-ofisnykh-kresel-i-stulyev') }}">Комплектующие</a>
+        {% for footer_category in public_categories[:3] %}
+          <a href="{{ url_for('site.category', category_slug=footer_category.slug) }}">{{ footer_category.name }}</a>
+        {% endfor %}
         <a href="{{ url_for('site.sitemap_page') }}">Карта сайта</a>
       </section>
       <section>

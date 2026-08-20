@@ -3,7 +3,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from app import create_app
-from app.site_data import ARTICLE_SLUGS, CATEGORIES, LEGACY_BLOG_SLUGS, NEWS_SLUGS
+from app.services.catalog import Category, load_brands, load_categories
+from app.site_data import ARTICLE_SLUGS, LEGACY_BLOG_SLUGS, NEWS_SLUGS
 
 
 class PublicRouteTests(unittest.TestCase):
@@ -12,6 +13,8 @@ class PublicRouteTests(unittest.TestCase):
         cls.app = create_app()
         cls.app.config.update(TESTING=True, SERVER_NAME="localhost")
         cls.client = cls.app.test_client()
+        cls.categories = load_categories()
+        cls.brands = load_brands()
 
     def test_primary_and_information_routes(self):
         routes = [
@@ -25,7 +28,7 @@ class PublicRouteTests(unittest.TestCase):
                 self.assertEqual(self.client.get(route).status_code, 200)
 
     def test_all_category_routes(self):
-        for category in CATEGORIES:
+        for category in self.categories:
             route = f"/catalog-kresel/{category.slug}/"
             with self.subTest(route=route):
                 response = self.client.get(route)
@@ -42,9 +45,11 @@ class PublicRouteTests(unittest.TestCase):
             with self.subTest(route=f"/blog/{slug}"):
                 self.assertIn(self.client.get(f"/blog/{slug}").status_code, {200, 301})
 
+    @patch("app.routes.site.product_path", return_value="/catalog-kresel/ofisnaya_mebel/kreslo_test.html")
+    @patch("app.routes.site.category_for_product", return_value=Category(1, "Офисная мебель", "ofisnaya_mebel"))
     @patch("app.routes.site.related_products", return_value=[])
     @patch("app.routes.site.find_product")
-    def test_product_route_and_breadcrumbs(self, find_product, _related):
+    def test_product_route_and_breadcrumbs(self, find_product, _related, _category, _path):
         find_product.return_value = SimpleNamespace(
             product_id=77,
             name="Кресло тест",
@@ -61,10 +66,27 @@ class PublicRouteTests(unittest.TestCase):
         self.assertIn("Каталог".encode("utf-8"), response.data)
 
     def test_legacy_category_redirect_and_404(self):
-        response = self.client.get("/catalog/kresla_everprof")
-        self.assertEqual(response.status_code, 301)
-        self.assertTrue(response.headers["Location"].endswith("/catalog-kresel/kresla_everprof/"))
+        response = self.client.get("/catalog-kresel/kresla_everprof/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Everprof", response.data)
         self.assertEqual(self.client.get("/unknown-public-route").status_code, 404)
+
+    def test_database_reference_apis(self):
+        brands = self.client.get("/api/catalog/brands")
+        categories = self.client.get("/api/catalog/categories")
+        legacy_brands = self.client.get("/api/brands")
+        self.assertEqual(brands.status_code, 200)
+        self.assertEqual(categories.status_code, 200)
+        self.assertEqual(legacy_brands.status_code, 200)
+        self.assertTrue(all({"id", "name", "slug"} <= set(item) for item in brands.get_json()))
+        self.assertTrue(all({"id", "name", "slug", "parent_id"} <= set(item) for item in categories.get_json()))
+        self.assertTrue(all({"id_brand", "name", "slug"} <= set(item)
+                            for item in legacy_brands.get_json()["brands"]))
+
+        root = next(item for item in self.categories if item.parent_id is None)
+        response = self.client.get(f"/api/catalog/categories/{root.category_id}/subcategories")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(all(item["parent_id"] == root.category_id for item in response.get_json()))
 
     def test_responsive_contract(self):
         response = self.client.get("/")

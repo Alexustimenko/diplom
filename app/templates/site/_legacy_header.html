@@ -1,0 +1,11 @@
+<a class="skip-link" href="#legacy-content">К содержанию</a>
+<header class="site-header legacy-site-header">
+  <div class="utility-bar"><div class="shell utility-inner"><span>Минск · офисная мебель и комплектующие</span><a href="mailto:info@rolmark.by">info@rolmark.by</a></div></div>
+  <div class="shell header-main">
+    <a class="brand" href="{{ url_for('site.home') }}"><img src="{{ url_for('static', filename='rolmark_logo.png') }}" alt="Ролмарк"></a>
+    <form class="header-search" action="{{ url_for('site.catalog') }}" method="get"><input name="q" placeholder="Поиск товара" aria-label="Поиск товара"><button>Найти</button></form>
+    <div class="header-actions"><a href="{{ url_for('auth.cart') }}">Корзина</a>{% if session.get('user_id') %}<a href="{{ url_for('auth.cabinet') }}">Кабинет</a>{% else %}<a href="{{ url_for('auth.login') }}">Войти</a>{% endif %}</div>
+  </div>
+  <nav class="main-nav"><div class="shell nav-inner"><a href="{{ url_for('site.catalog') }}">Каталог</a><a href="{{ url_for('auth.smart_pick') }}">Подбор</a><a href="{{ url_for('auth.compat_page') }}">Совместимость</a><a href="{{ url_for('site.page_dostavka') }}">Доставка</a><a href="{{ url_for('site.page_contact') }}">Контакты</a></div></nav>
+</header>
+<main id="legacy-content" class="legacy-page shell">

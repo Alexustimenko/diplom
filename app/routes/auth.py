@@ -1,6 +1,7 @@
 # app/routes/auth.py
 from flask import Blueprint, render_template, request, redirect, url_for, session, send_file
 from app.db import get_conn
+from app.services.catalog import slugify
 import bcrypt
 import io
 from docx import Document
@@ -17,6 +18,11 @@ from email.mime.multipart import MIMEMultipart
 
 auth_bp = Blueprint("auth", __name__)
 EMAIL_ALLOWED_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+
+def is_parts_category_name(value: str | None) -> bool:
+    normalized = (value or "").lower()
+    return "запчаст" in normalized or "комплектующ" in normalized
 
 def is_valid_email_strict(email: str) -> bool:
     if not email or len(email) > 254:
@@ -570,6 +576,10 @@ def _require_login():
 
 @auth_bp.route("/catalog-legacy")
 def index():
+    # Preserve old bookmarks while keeping a single DB-driven catalog UI.
+    return redirect(url_for("site.catalog", **request.args), code=301)
+
+    # Historical implementation retained below temporarily for reference.
     # ✅ q_raw — как есть (для инпута), q — обрезанный (для SQL)
     q_raw = request.args.get("q", "")
     q = q_raw.strip()
@@ -603,7 +613,7 @@ def index():
     children_map = {}
 
     for c in categories:
-        if c.name and "запчаст" in c.name.lower():
+        if is_parts_category_name(c.name):
             parts_roots.add(int(c.category_id))
         if c.parent_id is not None:
             children_map.setdefault(int(c.parent_id), []).append(int(c.category_id))
@@ -650,7 +660,7 @@ def index():
         """, *list(cat_ids_for_brand))
         brands = cur.fetchall()
     else:
-        cur.execute("SELECT id_brand, name FROM dbo.brand ORDER BY name")
+        cur.execute("SELECT id_brand, name, slug FROM dbo.brand ORDER BY name")
         brands = cur.fetchall()
 
     # если выбран бренд, но его нет в доступных брендах — сбросим (чтобы фильтр не давал “пусто”)
@@ -1102,6 +1112,10 @@ def admin():
                         error = f"Бренд с названием '{name}' уже существует"
                     else:
                         cur.execute("EXEC dbo.sp_add_brand ?", name)
+                        cur.execute(
+                            "UPDATE dbo.brand SET slug = ?, source = 'admin' WHERE name = ? AND slug IS NULL",
+                            slugify(name, "-"), name,
+                        )
                         conn.commit()
                         success = "Бренд добавлен"
 
@@ -1125,6 +1139,10 @@ def admin():
                         error = f"Бренд с названием '{name}' уже существует"
                     else:
                         cur.execute("EXEC dbo.sp_update_brand ?, ?", brand_id, name)
+                        cur.execute(
+                            "UPDATE dbo.brand SET slug = ?, catalog_slug = NULL, source = 'admin' WHERE id_brand = ?",
+                            slugify(name, "-"), brand_id,
+                        )
                         conn.commit()
                         success = "Бренд обновлён"
 
@@ -1168,6 +1186,10 @@ def admin():
                         error = f"Категория/подкатегория с названием '{name}' уже существует"
                     else:
                         cur.execute("EXEC dbo.sp_add_category ?, ?", name, parent_id)
+                        cur.execute(
+                            "UPDATE dbo.categories SET slug = ?, source = 'admin', is_filterable = 1 WHERE name = ? AND slug IS NULL",
+                            slugify(name, "-"), name,
+                        )
                         conn.commit()
                         success = "Категория добавлена"
 
@@ -1197,6 +1219,10 @@ def admin():
                         error = f"Категория/подкатегория с названием '{name}' уже существует"
                     else:
                         cur.execute("EXEC dbo.sp_update_category ?, ?, ?", cid, name, parent_id)
+                        cur.execute(
+                            "UPDATE dbo.categories SET slug = ?, source = 'admin', is_filterable = 1 WHERE category_id = ?",
+                            slugify(name, "-"), cid,
+                        )
                         conn.commit()
                         success = "Категория обновлена"
 
@@ -1386,7 +1412,13 @@ def admin():
     cur.execute("SELECT id_brand,name FROM dbo.vw_brands")
     brands = cur.fetchall()
 
-    cur.execute("SELECT category_id,name,parent_id,parent_name FROM dbo.vw_categories")
+    cur.execute("""
+        SELECT c.category_id, c.name, c.parent_id, p.name AS parent_name
+        FROM dbo.categories c
+        LEFT JOIN dbo.categories p ON p.category_id = c.parent_id
+        WHERE c.is_filterable = 1
+        ORDER BY c.name
+    """)
     categories = cur.fetchall()
 
     cur.execute("SELECT * FROM dbo.vw_products ORDER BY product_id DESC")
@@ -1485,7 +1517,7 @@ def admin_reports():
     clients_list = cur.fetchall()
 
     # категории
-    cur.execute("SELECT category_id, name FROM dbo.categories ORDER BY name")
+    cur.execute("SELECT category_id, name FROM dbo.categories WHERE is_filterable = 1 ORDER BY name")
     categories_list = cur.fetchall()
     statuses_list = [
         "Ожидает обработки",
@@ -3753,7 +3785,7 @@ def api_brands_by_category():
     children_map = {}
 
     for c in categories:
-        if c.name and "запчаст" in c.name.lower():
+        if is_parts_category_name(c.name):
             parts_roots.add(int(c.category_id))
         if c.parent_id is not None:
             children_map.setdefault(int(c.parent_id), []).append(int(c.category_id))
@@ -3776,13 +3808,13 @@ def api_brands_by_category():
 
     # если категория не выбрана — вернём все бренды
     if not category_id_raw.isdigit():
-        cur.execute("SELECT id_brand, name FROM dbo.brand ORDER BY name")
+        cur.execute("SELECT id_brand, name, slug FROM dbo.brand ORDER BY name")
         rows = cur.fetchall()
         conn.close()
         return jsonify({
             "ok": True,
             "is_parts_mode": False,
-            "brands": [{"id_brand": int(r.id_brand), "name": r.name} for r in rows]
+            "brands": [{"id_brand": int(r.id_brand), "name": r.name, "slug": r.slug} for r in rows]
         })
 
     cat_id = int(category_id_raw)
@@ -3795,8 +3827,10 @@ def api_brands_by_category():
     cur.execute(f"""
         SELECT DISTINCT
             vp.id_brand   AS id_brand,
-            vp.brand_name AS name
+            vp.brand_name AS name,
+            b.slug        AS slug
         FROM dbo.vw_products vp
+        JOIN dbo.brand b ON b.id_brand = vp.id_brand
         WHERE vp.id_brand IS NOT NULL
           AND vp.category_id IN ({placeholders})
         ORDER BY vp.brand_name
@@ -3807,7 +3841,7 @@ def api_brands_by_category():
     return jsonify({
         "ok": True,
         "is_parts_mode": is_parts_mode,
-        "brands": [{"id_brand": int(r.id_brand), "name": r.name} for r in rows]
+        "brands": [{"id_brand": int(r.id_brand), "name": r.name, "slug": r.slug} for r in rows]
     })
 
 @auth_bp.route("/api/compat/matrix", methods=["POST"])
@@ -3893,7 +3927,7 @@ def smart_pick():
     cur = conn.cursor()
 
     # списки для формы
-    cur.execute("SELECT category_id, name FROM dbo.categories ORDER BY name")
+    cur.execute("SELECT category_id, name FROM dbo.categories WHERE is_filterable = 1 ORDER BY name")
     categories = cur.fetchall()
 
     cur.execute("SELECT id_brand, name FROM dbo.brand ORDER BY name")
@@ -3936,12 +3970,12 @@ def smart_pick():
             pname = (cinfo.parent_name or "").lower()
             parent_id = cinfo.parent_id
 
-            is_parts_any = ("запчаст" in cname) or ("запчаст" in pname)
+            is_parts_any = is_parts_category_name(cname) or is_parts_category_name(pname)
             if is_parts_any:
                 parts_mode = True
 
                 # корневая "Запчасти": имя содержит "запчаст", а родитель не "запчасти"
-                if ("запчаст" in cname) and (parent_id is None or ("запчаст" not in pname)):
+                if is_parts_category_name(cname) and (parent_id is None or not is_parts_category_name(pname)):
                     parts_root_mode = True
                     parts_root_id = int(cinfo.category_id)
 

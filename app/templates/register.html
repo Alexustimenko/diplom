@@ -65,9 +65,9 @@ button:hover:not(:disabled) {
 
 .link { margin-top: 14px; text-align: center; }
 .link a { color: #CF1B03; font-weight: bold; text-decoration: none; }
-</style>
+</style><link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='legacy-unify.css') }}">
 </head>
-<body>
+<body>{% include "site/_legacy_header.html" %}
 
 <div class="container">
     <h2>Регистрация</h2>
@@ -157,5 +157,5 @@ function toggleButton() {
 }
 </script>
 
-</body>
+{% include "site/_legacy_footer.html" %}</body>
 </html>

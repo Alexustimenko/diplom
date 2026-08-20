@@ -5,8 +5,8 @@ from flask import Flask, render_template
 
 from app.routes.auth import auth_bp
 from app.routes.site import site_bp
-from app.services.catalog import product_path, row_value
-from app.site_data import CATEGORIES, STATIC_PAGES
+from app.services.catalog import load_navigation, product_path, row_value
+from app.site_data import STATIC_PAGES
 
 def create_app():
     load_dotenv()
@@ -18,8 +18,12 @@ def create_app():
     app.register_blueprint(site_bp)
     app.register_blueprint(auth_bp)
 
+    @app.context_processor
+    def public_navigation():
+        categories, brands = load_navigation()
+        return {"public_categories": categories, "public_brands": brands}
+
     app.jinja_env.globals.update(
-        public_categories=CATEGORIES,
         static_pages=STATIC_PAGES,
         product_path=product_path,
         row_value=row_value,

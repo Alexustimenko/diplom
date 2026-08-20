@@ -4,7 +4,8 @@
     <div class="sitemap-grid">
       <section><h2>Основное</h2><a href="{{ url_for('site.home') }}">Главная</a><a href="{{ url_for('site.catalog') }}">Каталог</a><a href="{{ url_for('site.articles') }}">Статьи</a><a href="{{ url_for('site.news') }}">Новости</a></section>
       <section><h2>Информация</h2>{% for key, page in static_pages.items() %}<a href="{{ url_for('site.page_' ~ key|replace('-', '_')) }}">{{ page[0] }}</a>{% endfor %}</section>
-      <section class="sitemap-categories"><h2>Категории</h2>{% for item in public_categories %}<a href="{{ url_for('site.category', category_slug=item.slug) }}">{{ item.name }}</a>{% endfor %}</section>
+      <section class="sitemap-categories"><h2>Категории и подкатегории</h2>{% for item in public_categories %}<a href="{{ url_for('site.category', category_slug=item.slug) }}"><strong>{{ item.name }}</strong></a>{% for child in item.children %}<a href="{{ url_for('site.category', category_slug=child.slug) }}">{{ child.name }}</a>{% endfor %}{% endfor %}</section>
+      <section class="sitemap-categories"><h2>Бренды</h2>{% for item in public_brands %}<a href="{{ url_for('site.brand_page', brand_slug=item.slug) }}">{{ item.name }}</a>{% endfor %}</section>
     </div>
   </section>
 {% endblock %}

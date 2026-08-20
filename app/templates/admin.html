@@ -274,10 +274,10 @@ th:last-child, td:last-child{
 .modal-content .btn{
     margin-top:10px;
 }
-    </style>
+</style><link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='legacy-unify.css') }}">
 </head>
 
-<body>
+<body>{% include "site/_legacy_header.html" %}
     <div class="topbar">
         <div class="logo">ADMIN PANEL</div>
         <div class="row">
@@ -1308,13 +1308,14 @@ function toggleDetails(id){
 </div>
 
 <script>
-const ALL_CATEGORIES = [
+// Rendered from dbo.categories by the admin route; never a frontend source of truth.
+const DB_CATEGORIES = [
 {% for c in categories %}
     { id: {{ c.category_id }}, name: "{{ c.name|escape }}" },
 {% endfor %}
 ];
 
-const ALL_BRANDS = [
+const DB_BRANDS = [
 {% for b in brands %}
     { id: {{ b.id_brand }}, name: "{{ b.name|escape }}" },
 {% endfor %}
@@ -1336,7 +1337,7 @@ function openModal(btn){
 
     // формируем options
     let categoryOptions = '<option value="">(категория не выбрана)</option>';
-    ALL_CATEGORIES.forEach(c => {
+    DB_CATEGORIES.forEach(c => {
         categoryOptions += `
             <option value="${c.id}" ${c.id == categoryId ? "selected" : ""}>
                 ${c.name}
@@ -1344,7 +1345,7 @@ function openModal(btn){
     });
 
     let brandOptions = '<option value="">(бренд не выбран)</option>';
-    ALL_BRANDS.forEach(b => {
+    DB_BRANDS.forEach(b => {
         brandOptions += `
             <option value="${b.id}" ${b.id == brandId ? "selected" : ""}>
                 ${b.name}
@@ -1396,5 +1397,5 @@ window.addEventListener("click", function(e){
     }
 });
 </script>
-</body>
+{% include "site/_legacy_footer.html" %}</body>
 </html>

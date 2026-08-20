@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+import sys
+from pathlib import Path
 from urllib.parse import urlsplit
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from app import create_app
-from app.site_data import ARTICLE_SLUGS, CATEGORIES, LEGACY_BLOG_SLUGS, NEWS_SLUGS
+from app.services.catalog import load_brands, load_categories
+from app.site_data import ARTICLE_SLUGS, LEGACY_BLOG_SLUGS, NEWS_SLUGS
 
 
 class AnchorParser(HTMLParser):
@@ -29,7 +34,8 @@ def expected_routes() -> list[str]:
         "/garantiya_zamena_vozvrat", "/kreslo-v-rassrochky/", "/sale/",
         "/politika_konfidentsialnosti/", "/halva",
     ]
-    routes.extend(f"/catalog-kresel/{item.slug}/" for item in CATEGORIES)
+    routes.extend(f"/catalog-kresel/{item.slug}/" for item in load_categories())
+    routes.extend(f"/brands/{item.slug}/" for item in load_brands())
     routes.extend(f"/articles/{slug}/" for slug in ARTICLE_SLUGS)
     routes.extend(f"/news/{slug}/" for slug in NEWS_SLUGS)
     routes.extend(f"/blog/{slug}" for slug in LEGACY_BLOG_SLUGS)

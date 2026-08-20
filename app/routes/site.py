@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, jsonify, redirect, render_template, request, url_for
 
 from app.services.catalog import (
     category_for_product,
+    find_brand_by_slug,
+    find_category_by_slug,
     find_product,
     find_product_any,
+    load_brands,
+    load_categories,
     load_catalog,
     product_path,
     related_products,
@@ -15,7 +19,6 @@ from app.services.catalog import (
 )
 from app.site_data import (
     ARTICLE_SLUGS,
-    CATEGORY_BY_SLUG,
     NEWS_SLUGS,
     LEGACY_BLOG_SLUGS,
     STATIC_PAGES,
@@ -26,9 +29,44 @@ from app.site_data import (
 site_bp = Blueprint("site", __name__)
 
 
+@site_bp.get("/api/catalog/brands")
+def catalog_brands_api():
+    try:
+        return jsonify([{
+            "id": item.id_brand, "name": item.name, "slug": item.slug,
+        } for item in load_brands()])
+    except Exception:
+        return jsonify({"error": "Справочник брендов временно недоступен"}), 503
+
+
+@site_bp.get("/api/catalog/categories")
+def catalog_categories_api():
+    try:
+        return jsonify([{
+            "id": item.category_id, "name": item.name, "slug": item.slug,
+            "parent_id": item.parent_id,
+        } for item in load_categories()])
+    except Exception:
+        return jsonify({"error": "Справочник категорий временно недоступен"}), 503
+
+
+@site_bp.get("/api/catalog/categories/<int:category_id>/subcategories")
+def catalog_subcategories_api(category_id: int):
+    try:
+        return jsonify([{
+            "id": item.category_id, "name": item.name, "slug": item.slug,
+            "parent_id": item.parent_id,
+        } for item in load_categories() if item.parent_id == category_id])
+    except Exception:
+        return jsonify({"error": "Справочник подкатегорий временно недоступен"}), 503
+
+
 def _catalog_response(category_slug: str | None = None, *, home: bool = False):
-    category = CATEGORY_BY_SLUG.get(category_slug) if category_slug else None
+    category = find_category_by_slug(category_slug) if category_slug else None
     if category_slug and category is None:
+        brand = find_brand_by_slug(category_slug)
+        if brand:
+            return _brand_response(brand)
         abort(404)
     result = load_catalog(category_slug, request.args, per_page=8 if home else 12)
     title = "Каталог офисной мебели" if not category else category.name
@@ -39,6 +77,8 @@ def _catalog_response(category_slug: str | None = None, *, home: bool = False):
     breadcrumbs = [] if home else [("Главная", url_for("site.home"))]
     if category:
         breadcrumbs.append(("Каталог", url_for("site.catalog")))
+        if category.parent_slug and find_category_by_slug(category.parent_slug):
+            breadcrumbs.append((category.parent_name, url_for("site.category", category_slug=category.parent_slug)))
         breadcrumbs.append((category.name, None))
     elif not home:
         breadcrumbs.append(("Каталог", None))
@@ -46,6 +86,7 @@ def _catalog_response(category_slug: str | None = None, *, home: bool = False):
         "site/catalog.html",
         home=home,
         category=category,
+        brand=None,
         result=result,
         page_title=title,
         meta_description=description,
@@ -56,6 +97,23 @@ def _catalog_response(category_slug: str | None = None, *, home: bool = False):
     )
 
 
+def _brand_response(brand):
+    result = load_catalog(None, request.args, brand_slug=brand.slug)
+    return render_template(
+        "site/catalog.html",
+        home=False,
+        category=None,
+        brand=brand,
+        result=result,
+        page_title=f"Товары {brand.name}",
+        meta_description=f"Товары бренда {brand.name} в каталоге Ролмарк.",
+        canonical_url=url_for("site.brand_page", brand_slug=brand.slug, _external=True),
+        breadcrumbs=[
+            ("Главная", url_for("site.home")),
+            ("Бренды", url_for("site.catalog")),
+            (brand.name, None),
+        ],
+    )
 @site_bp.get("/")
 def home():
     return _catalog_response(home=True)
@@ -111,7 +169,7 @@ def product(category_slug: str, product_slug: str):
 
 @site_bp.get("/catalog/<category_slug>")
 def legacy_category(category_slug: str):
-    if category_slug not in CATEGORY_BY_SLUG:
+    if find_category_by_slug(category_slug) is None:
         abort(404)
     return redirect(url_for("site.category", category_slug=category_slug), code=301)
 
@@ -124,9 +182,12 @@ def legacy_product_slug(product_slug: str):
     return redirect(product_path(product_row), code=301)
 
 
-@site_bp.get("/brands/<brand_slug>")
+@site_bp.get("/brands/<brand_slug>/")
 def brand_page(brand_slug: str):
-    return redirect(url_for("site.catalog", q=brand_slug), code=302)
+    brand = find_brand_by_slug(brand_slug)
+    if brand is None:
+        abort(404)
+    return _brand_response(brand)
 
 
 STATIC_ROUTE_MAP = {

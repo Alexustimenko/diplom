@@ -1,0 +1,9 @@
+</main>
+<footer class="site-footer legacy-site-footer">
+  <div class="shell footer-grid">
+    <section><h2>Покупателям</h2><a href="{{ url_for('site.page_dostavka') }}">Доставка</a><a href="{{ url_for('site.page_oplata') }}">Оплата</a><a href="{{ url_for('site.page_garantiya_zamena_vozvrat') }}">Гарантия</a></section>
+    <section><h2>Каталог</h2>{% for item in public_categories[:3] %}<a href="{{ url_for('site.category', category_slug=item.slug) }}">{{ item.name }}</a>{% endfor %}</section>
+    <section><h2>Компания</h2><a href="{{ url_for('site.page_about') }}">О нас</a><a href="{{ url_for('site.page_contact') }}">Контакты</a><a href="{{ url_for('site.articles') }}">Статьи</a></section>
+    <section><h2>Связь</h2><a href="tel:+375293514550">+375 (29) 351-45-50</a><a href="mailto:info@rolmark.by">info@rolmark.by</a></section>
+  </div>
+</footer>

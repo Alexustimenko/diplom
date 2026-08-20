@@ -60,9 +60,9 @@
         .export-btn:hover {
             opacity:.9;
         }
-    </style>
+</style><link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='legacy-unify.css') }}">
 </head>
-<body>
+<body>{% include "site/_legacy_header.html" %}
 
 <div class="container">
 
@@ -92,5 +92,5 @@
 
 </div>
 
-</body>
+{% include "site/_legacy_footer.html" %}</body>
 </html>

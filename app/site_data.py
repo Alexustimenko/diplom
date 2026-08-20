@@ -17,7 +17,10 @@ class Category:
     group: str = "chairs"
 
 
-CATEGORIES = (
+# Historical route-research snapshot kept only for audit traceability. Runtime
+# navigation, filters, routes and admin forms never read this tuple; SQL Server
+# is the sole catalog taxonomy source of truth.
+LEGACY_ROUTE_REFERENCE = (
     Category("nedorogo-kupit-kreslo", "Недорогие кресла", "Практичные модели с доступной ценой для дома и офиса.", group="featured"),
     Category("kresla_everprof", "Кресла Everprof", "Модели бренда Everprof из нашего каталога.", brand="everprof"),
     Category("kresla_metta", "Кресла МЕТТА", "Модели бренда МЕТТА из нашего каталога.", brand="метта"),
@@ -53,9 +56,6 @@ CATEGORIES = (
     Category("tovary_dlya_sporta_nedorogo", "Товары для спорта", "Практичные товары для домашней и офисной активности.", terms=("спорт", "тренаж"), group="legacy"),
     Category("tovary_dlia_otdyha_i_turizma", "Товары для отдыха и туризма", "Товары для выездного отдыха и организации временных зон.", terms=("туризм", "отдых"), group="legacy"),
 )
-
-CATEGORY_BY_SLUG = {category.slug: category for category in CATEGORIES}
-
 
 STATIC_PAGES = {
     "dostavka": ("Доставка", "Условия доставки", "Доставляем заказы по согласованному адресу. Срок и стоимость зависят от состава заказа и региона; менеджер подтвердит их до оформления."),
