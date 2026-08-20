@@ -1,0 +1,10 @@
+{% extends "site/base.html" %}
+{% block content %}
+  <section class="section-block"><span class="eyebrow">Навигация</span><h1>Карта сайта</h1>
+    <div class="sitemap-grid">
+      <section><h2>Основное</h2><a href="{{ url_for('site.home') }}">Главная</a><a href="{{ url_for('site.catalog') }}">Каталог</a><a href="{{ url_for('site.articles') }}">Статьи</a><a href="{{ url_for('site.news') }}">Новости</a></section>
+      <section><h2>Информация</h2>{% for key, page in static_pages.items() %}<a href="{{ url_for('site.page_' ~ key|replace('-', '_')) }}">{{ page[0] }}</a>{% endfor %}</section>
+      <section class="sitemap-categories"><h2>Категории</h2>{% for item in public_categories %}<a href="{{ url_for('site.category', category_slug=item.slug) }}">{{ item.name }}</a>{% endfor %}</section>
+    </div>
+  </section>
+{% endblock %}

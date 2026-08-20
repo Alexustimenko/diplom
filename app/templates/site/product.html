@@ -1,0 +1,33 @@
+{% extends "site/base.html" %}
+{% block content %}
+  <article class="product-detail">
+    <div class="product-gallery">
+      <img src="{{ url_for('auth.product_image', pid=row_value(p, 'product_id')) }}" alt="{{ row_value(p, 'name') }}" onerror="this.onerror=null;this.src='{{ url_for('static', filename='rolmark_logo.png') }}'">
+    </div>
+    <div class="product-summary">
+      <span class="eyebrow">{{ row_value(p, 'brand_name', category.name) }}</span>
+      <h1>{{ row_value(p, 'name', 'Товар') }}</h1>
+      <p class="price detail-price">{{ '%.2f'|format(row_value(p, 'price', 0)|float) }} руб.</p>
+      <p class="stock {% if row_value(p, 'stock_quantity', 0)|int > 0 %}in-stock{% endif %}">{% if row_value(p, 'stock_quantity', 0)|int > 0 %}В наличии: {{ row_value(p, 'stock_quantity') }}{% else %}Уточните срок поставки{% endif %}</p>
+      {% if session.get('user_id') %}
+        <form class="buy-form" action="{{ url_for('auth.cart_add', pid=row_value(p, 'product_id')) }}" method="post">
+          <label>Количество<input type="number" name="qty" value="1" min="1" max="99"></label>
+          <button class="button primary" type="submit">Добавить в корзину</button>
+        </form>
+      {% else %}
+        <a class="button primary" href="{{ url_for('auth.login') }}">Войти и заказать</a>
+      {% endif %}
+      <div class="product-description"><h2>Описание</h2><p>{{ row_value(p, 'description', 'Уточните характеристики и комплектацию у менеджера.') }}</p></div>
+    </div>
+  </article>
+  <section class="specifications">
+    <h2>Характеристики</h2>
+    <dl>
+      <div><dt>Категория</dt><dd><a href="{{ url_for('site.category', category_slug=category.slug) }}">{{ category.name }}</a></dd></div>
+      <div><dt>Бренд</dt><dd>{{ row_value(p, 'brand_name', 'Не указан') }}</dd></div>
+      <div><dt>Артикул</dt><dd>{{ row_value(p, 'product_id') }}</dd></div>
+      <div><dt>Наличие</dt><dd>{{ row_value(p, 'stock_quantity', 0) }}</dd></div>
+    </dl>
+  </section>
+  {% if related %}<section class="section-block"><div class="section-heading"><h2>Похожие товары</h2></div><div class="product-grid">{% for product in related %}{% include "site/_product_card.html" %}{% endfor %}</div></section>{% endif %}
+{% endblock %}

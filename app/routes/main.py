@@ -1,10 +1,5 @@
-from flask import Flask
-from app.routes.auth import auth_bp
+"""Backward-compatible import for the application factory."""
 
-def create_app():
-    app = Flask(__name__)
-    app.secret_key = "CHANGE_ME_SECRET_KEY"
+from app import create_app
 
-    app.register_blueprint(auth_bp)
-
-    return app
+__all__ = ["create_app"]

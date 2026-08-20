@@ -1,0 +1,24 @@
+<article class="product-card">
+  <a class="product-image" href="{{ product_path(product) }}">
+    <img src="{{ url_for('auth.product_image', pid=row_value(product, 'product_id')) }}"
+         alt="{{ row_value(product, 'name', 'Товар') }}"
+         loading="lazy"
+         onerror="this.onerror=null;this.src='{{ url_for('static', filename='rolmark_logo.png') }}'">
+  </a>
+  <div class="product-card-body">
+    {% if row_value(product, 'brand_name') %}<span class="eyebrow">{{ row_value(product, 'brand_name') }}</span>{% endif %}
+    <h3><a href="{{ product_path(product) }}">{{ row_value(product, 'name', 'Товар') }}</a></h3>
+    <p class="price">{{ '%.2f'|format(row_value(product, 'price', 0)|float) }} руб.</p>
+    <p class="stock {% if row_value(product, 'stock_quantity', 0)|int > 0 %}in-stock{% endif %}">
+      {% if row_value(product, 'stock_quantity', 0)|int > 0 %}В наличии{% else %}Под заказ{% endif %}
+    </p>
+    {% if session.get('user_id') %}
+      <form action="{{ url_for('auth.cart_add', pid=row_value(product, 'product_id')) }}" method="post">
+        <input type="hidden" name="qty" value="1">
+        <button class="button primary" type="submit">В корзину</button>
+      </form>
+    {% else %}
+      <a class="button primary" href="{{ url_for('auth.login') }}">Войти для заказа</a>
+    {% endif %}
+  </div>
+</article>

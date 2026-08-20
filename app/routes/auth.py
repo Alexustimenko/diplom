@@ -568,7 +568,7 @@ def _require_login():
 
 # app/routes/auth.py  (ФРАГМЕНТ: только index() с фильтрами + пагинацией)
 
-@auth_bp.route("/")
+@auth_bp.route("/catalog-legacy")
 def index():
     # ✅ q_raw — как есть (для инпута), q — обрезанный (для SQL)
     q_raw = request.args.get("q", "")
@@ -836,11 +836,9 @@ def product(pid):
         conn.close()
         return "Not Found", 404
 
-    cur.execute("SELECT image_id FROM dbo.images WHERE product_id = ? ORDER BY image_id DESC", pid)
-    images = cur.fetchall()  # [(image_id,), ...]
-
     conn.close()
-    return render_template("product.html", p=p, images=images)
+    from app.services.catalog import product_path
+    return redirect(product_path(p), code=301)
 
 
 @auth_bp.route("/product_image/<int:pid>")
