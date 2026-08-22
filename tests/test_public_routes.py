@@ -7,6 +7,39 @@ from app.services.catalog import Category, load_brands, load_categories
 from app.site_data import ARTICLE_SLUGS, LEGACY_BLOG_SLUGS, NEWS_SLUGS
 
 
+class InstallmentPageTests(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app()
+        self.app.config.update(TESTING=True, SERVER_NAME="localhost")
+        self.client = self.app.test_client()
+
+    def test_installment_page_matches_reference_content(self):
+        response = self.client.get("/kreslo-v-rassrochky/")
+        self.assertEqual(response.status_code, 200)
+        for text in (
+            "Наш интернет-магазин&nbsp;clerk.by постоянно заботится о своих клиентах",
+            "ВТБ банк карта «Черепаха»",
+            "МТБанк карта «Халва»",
+            "БПС «Сбербанк» карта&nbsp;Fun",
+            'Банк Дабрабыт "СМАРТ КАРТА" ВРЕМЕННО ПРИОСТАНОВЛЕНО!!!',
+            "Банк ВТБ – Рассрочка 3 месяца.",
+            'ОАО "Технобанк"- рассрочка 3 или 6 месяцев.',
+            "Рассрочка не предоставляется индивидуальным предпринимателям.",
+        ):
+            with self.subTest(text=text):
+                self.assertIn(text.encode("utf-8"), response.data)
+        for image in (
+            "rassrocha-na-ofisnie-kresla.png",
+            "rassrocha-karta-cherepaha.jpg",
+            "halva-banner-rassrochka.jpg",
+            "rassrocha-karta-sun-minsk.png",
+            "smart.png",
+            "tehnobank.png",
+        ):
+            with self.subTest(image=image):
+                self.assertIn(f"/static/installment/{image}".encode(), response.data)
+
+
 class PublicRouteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

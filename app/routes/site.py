@@ -208,6 +208,20 @@ def static_page(page_key: str):
     page = STATIC_PAGES.get(page_key)
     if page is None:
         abort(404)
+    if page_key == "kreslo-v-rassrochky":
+        return render_template(
+            "site/installment.html",
+            page_title="Кресло в рассрочку, купить офисное кресло в рассрочку в Минске",
+            meta_description=(
+                "Очередным нововведением магазина офисных кресел - стала "
+                "покупка кресел и стульев в рассрочку."
+            ),
+            canonical_url=url_for("site.page_kreslo_v_rassrochky", _external=True),
+            breadcrumbs=[
+                ("Главная", url_for("site.home")),
+                ("Рассрочка", None),
+            ],
+        )
     short_title, heading, body = page
     return render_template(
         "site/static_page.html",
