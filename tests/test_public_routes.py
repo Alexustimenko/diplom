@@ -40,6 +40,35 @@ class InstallmentPageTests(unittest.TestCase):
                 self.assertIn(f"/static/installment/{image}".encode(), response.data)
 
 
+class PaymentPageTests(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app()
+        self.app.config.update(TESTING=True, SERVER_NAME="localhost")
+        self.client = self.app.test_client()
+
+    def test_payment_page_matches_reference_content(self):
+        for route in ("/oplata", "/oplata/"):
+            with self.subTest(route=route):
+                response = self.client.get(route)
+                self.assertEqual(response.status_code, 200)
+
+        response = self.client.get("/oplata/")
+        for text in (
+            "Безналичный расчёт",
+            "Наличный расчет",
+            "Оплата банковской картой",
+            "Порядок оплаты через систему «Расчет» (ЕРИП).",
+            "ДЛЯ ПРОВЕДЕНИЯ ПЛАТЕЖА НЕОБХОДИМО:",
+            "Оплата товаров под заказ:",
+            "Оплата осуществляется в белорусских рублях.",
+        ):
+            with self.subTest(text=text):
+                self.assertIn(text.encode("utf-8"), response.data)
+        for image in ("payment-receipt.jpg", "erip-payment.png"):
+            with self.subTest(image=image):
+                self.assertIn(f"/static/payment/{image}".encode(), response.data)
+
+
 class PublicRouteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -51,7 +80,7 @@ class PublicRouteTests(unittest.TestCase):
 
     def test_primary_and_information_routes(self):
         routes = [
-            "/", "/catalog-kresel/", "/dostavka/", "/oplata", "/contact",
+            "/", "/catalog-kresel/", "/dostavka/", "/oplata/", "/contact",
             "/about/", "/gift", "/garantiya_zamena_vozvrat",
             "/kreslo-v-rassrochky/", "/sale/", "/politika_konfidentsialnosti/",
             "/halva", "/articles/", "/news/", "/sitemap",

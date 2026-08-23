@@ -192,7 +192,7 @@ def brand_page(brand_slug: str):
 
 STATIC_ROUTE_MAP = {
     "dostavka": "/dostavka/",
-    "oplata": "/oplata",
+    "oplata": "/oplata/",
     "contact": "/contact",
     "about": "/about/",
     "gift": "/gift",
@@ -208,6 +208,20 @@ def static_page(page_key: str):
     page = STATIC_PAGES.get(page_key)
     if page is None:
         abort(404)
+    if page_key == "oplata":
+        return render_template(
+            "site/payment.html",
+            page_title="Способы оплаты",
+            meta_description=(
+                "У нас Вы можете выбрать удобный способ и произвести оплату "
+                "заказа при его получении товара."
+            ),
+            canonical_url=url_for("site.page_oplata", _external=True),
+            breadcrumbs=[
+                ("Главная", url_for("site.home")),
+                ("Оплата", None),
+            ],
+        )
     if page_key == "kreslo-v-rassrochky":
         return render_template(
             "site/installment.html",
@@ -242,6 +256,7 @@ def _register_static_routes() -> None:
             endpoint,
             lambda page_key=key: static_page(page_key),
             methods=["GET"],
+            strict_slashes=False if key == "oplata" else None,
         )
 
 
