@@ -69,6 +69,33 @@ class PaymentPageTests(unittest.TestCase):
                 self.assertIn(f"/static/payment/{image}".encode(), response.data)
 
 
+class AboutPageTests(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app()
+        self.app.config.update(TESTING=True, SERVER_NAME="localhost")
+        self.client = self.app.test_client()
+
+    def test_about_page_matches_reference_content(self):
+        response = self.client.get("/about/")
+        self.assertEqual(response.status_code, 200)
+        for text in (
+            "Владелец магазина",
+            "ИП Трухан Борис Евгеньевич",
+            "Свидетельство о регистрации №101430083 выдано 11.09.2008 Мингорисполкомом",
+            "220099, Беларусь, г.Минск, Казинца 51/4-10",
+            "BY90TECN30131560800170000000",
+            "ОАО «Технобанк»",
+            "пн-пт с 9.00 до 19.00, сб с 11.00 до 17.00, выходной-воскресенье",
+            "+375293514550",
+            "+375 751 45 50",
+            "info@",
+            "clerk.by",
+            "yandex.by/maps/157/minsk/house/",
+        ):
+            with self.subTest(text=text):
+                self.assertIn(text.encode("utf-8"), response.data)
+
+
 class PublicRouteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

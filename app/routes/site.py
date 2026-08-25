@@ -208,6 +208,17 @@ def static_page(page_key: str):
     page = STATIC_PAGES.get(page_key)
     if page is None:
         abort(404)
+    if page_key == "about":
+        return render_template(
+            "site/about.html",
+            page_title="О магазине Клерк",
+            meta_description="О компании КЛЕРК, владелец магазина clerk ИП Трухан Борис.",
+            canonical_url=url_for("site.page_about", _external=True),
+            breadcrumbs=[
+                ("Главная", url_for("site.home")),
+                ("О нас", None),
+            ],
+        )
     if page_key == "oplata":
         return render_template(
             "site/payment.html",

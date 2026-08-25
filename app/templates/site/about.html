@@ -1,0 +1,38 @@
+{% extends "site/base.html" %}
+{% block content %}
+  <article class="about-page" itemscope itemtype="https://schema.org/LocalBusiness">
+    <header class="about-hero">
+      <h1>О нас</h1>
+    </header>
+
+    <section class="about-section about-owner">
+      <div class="about-details">
+        <p itemprop="description">Владелец магазина ИП Трухан Борис Евгеньевич</p>
+        <p>Свидетельство о регистрации №101430083 выдано 11.09.2008 Мингорисполкомом</p>
+        <p itemprop="address" itemscope itemtype="https://schema.org/PostalAddress">Юридический адрес: <span itemprop="streetAddress">220099, Беларусь, г.Минск, Казинца 51/4-10</span></p>
+      </div>
+    </section>
+
+    <section class="about-section about-bank">
+      <p>Банковские реквизиты: р/с&nbsp;BY90TECN30131560800170000000 в ОАО «Технобанк» г.Минск, ул.Кропоткина,44 БИК TECNBY22</p>
+    </section>
+
+    <section class="about-section about-contacts">
+      <p class="about-hours">Время работы интернет-магазина: пн-пт с 9.00 до 19.00, сб с 11.00 до 17.00, выходной-воскресенье.</p>
+      <div class="about-contact-grid">
+        <a href="tel:+375293514550">
+          <strong>Контактный телефон:</strong>
+          <span>А1&nbsp;<span itemprop="telephone">+375293514550</span>, МТС <span itemprop="telephone">+375 751 45 50</span></span>
+        </a>
+        <a href="mailto:info@clerk.by">
+          <strong>Наша электронная почта:</strong>
+          <span itemprop="email">info@<span itemprop="name">clerk.by</span></span>
+        </a>
+      </div>
+    </section>
+
+    <footer class="about-map">
+      <a href="https://yandex.by/maps/157/minsk/house/Zk4YcwFnSUAOQFtpfXR2d35hbA==/?ll=27.568367%2C53.876261&amp;z=17.29" target="_blank" rel="noopener noreferrer">https://yandex.by/maps/157/minsk/house/Zk4YcwFnSUAOQFtpfXR2d35hbA==/?ll=27.568367%2C53.876261&amp;z=17.29</a>
+    </footer>
+  </article>
+{% endblock %}
