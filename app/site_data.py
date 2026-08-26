@@ -1,10 +1,12 @@
 """Public information architecture inspired by the current clerk.by route tree.
 
-Only route names and generic page purposes are represented here.  Product data,
-copy and images continue to come from Rolmark's own database and assets.
+Product data continues to come from Rolmark's database. The article route list
+is loaded from the separately authorized local editorial archive.
 """
 
 from dataclasses import dataclass
+
+from app.article_data import article_slugs
 
 
 @dataclass(frozen=True)
@@ -71,28 +73,7 @@ STATIC_PAGES = {
 }
 
 
-ARTICLE_SLUGS = (
-    "5_interesnyh_faktov_ob_ofisnyh_kreslah",
-    "ergonomichnye_ofisnye_kresla_chto_eto_i_kak_ih_vybrat",
-    "gejmerskoe_kreslo_tonkosti_vybora",
-    "hitrosti_vybora_gejmerskogo_kresla",
-    "kak_uhazhivat_za_ofisnym_divanom",
-    "kak_ustroena_ispytatelnaya_laboratoriya_kresel_chairman",
-    "kak_vybrat_barnye_stulya_dlya_kuhni",
-    "komfort_vliyaet_na_produktivnost_sotrudnikov",
-    "kozhanye_kresla_i_ih_preimuschestva",
-    "kresla_s_setkoj_stanovyatsya_populyarnymi",
-    "moda_na_kreslareklajner",
-    "naibolee_rasprostranennye_nepriyatnosti_s_ofisnymi_kreslami_i_kak_ih_izbezhat",
-    "naturalnaya_kozha_protiv_ekokozhi",
-    "ofisnaya_i_skladnaya_mebel_iz_kakogo_materiala_ee_vybrat",
-    "ofisnye_kresla_dlya_personala_legko_kupit_priyatno_rabotat",
-    "otlichie_multibloka_ot_dmsl",
-    "pravilnyj_vybor_kompyuternogo_kresla",
-    "sravnenie_gejmerskih_kresel_lotus_s5_signal_q054_everprof_forsage",
-    "vybor_mehanizma_dlya_kresla",
-    "zharkie_tseny_na_kresla_ot_rolmarktrejd",
-)
+ARTICLE_SLUGS = article_slugs()
 
 NEWS_SLUGS = (
     "chem_kresla_dlya_personala_otlichayutsya_ot_kresel_dlya_rukovoditelya",

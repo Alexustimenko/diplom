@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from flask import Blueprint, abort, jsonify, redirect, render_template, request, url_for
 
+from app.article_data import get_article, load_articles
+
 from app.services.catalog import (
     category_for_product,
     find_brand_by_slug,
@@ -290,7 +292,17 @@ _register_static_routes()
 
 @site_bp.get("/articles/")
 def articles():
-    return _content_listing("Статьи", "articles", ARTICLE_SLUGS)
+    title = "Статьи"
+    return render_template(
+        "site/content_list.html",
+        heading=title,
+        section="articles",
+        items=load_articles(),
+        page_title="Статьи на тему мебели",
+        meta_description="У нас вы можете прочитать статьи про мебель, которую можно купить в нашем салоне в Минске.",
+        canonical_url=url_for("site.articles", _external=True),
+        breadcrumbs=[("Главная", url_for("site.home")), (title, None)],
+    )
 
 
 @site_bp.get("/news/")
@@ -313,9 +325,23 @@ def _content_listing(title: str, section: str, slugs: tuple[str, ...]):
 
 @site_bp.get("/articles/<slug>/")
 def article(slug: str):
-    if slug not in ARTICLE_SLUGS:
+    item = get_article(slug)
+    if item is None:
         abort(404)
-    return _content_page(slug, "Статьи", "articles", "article")
+    return render_template(
+        "site/content_page.html",
+        article=item,
+        heading=item["title"],
+        section_title="Статьи",
+        page_title=item["title"],
+        meta_description=item["meta_description"],
+        canonical_url=url_for("site.article", slug=slug, _external=True),
+        breadcrumbs=[
+            ("Главная", url_for("site.home")),
+            ("Статьи", url_for("site.articles")),
+            (item["title"], None),
+        ],
+    )
 
 
 @site_bp.get("/news/<slug>/")
