@@ -58,9 +58,9 @@
             border-radius:10px;
             font-weight:800;
         }
-    </style>
+</style><link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='legacy-unify.css') }}">
 </head>
-<body>
+<body>{% include "site/_legacy_header.html" %}
 
 <div class="topbar">
     <div class="logo">ROLMARK</div>
@@ -294,5 +294,5 @@ deliveryRadios.forEach(radio => {
 // чтобы при загрузке тоже срабатывало
 updateAddressField();
 </script>
-</body>
+{% include "site/_legacy_footer.html" %}</body>
 </html>

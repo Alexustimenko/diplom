@@ -1,0 +1,108 @@
+{% extends "site/base.html" %}
+{% block content %}
+  {% if home %}
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Каталог Ролмарк</span>
+        <h1>Офисные кресла, мебель и комплектующие</h1>
+        <p>Подберите товар по назначению, бренду и параметрам, проверьте совместимость комплектующих и оформите заказ в одном месте.</p>
+        <div class="button-row">
+          <a class="button primary" href="{{ url_for('site.catalog') }}">Открыть каталог</a>
+          <a class="button" href="{{ url_for('auth.smart_pick') }}">Подобрать товар</a>
+          <a class="button" href="{{ url_for('auth.compat_page') }}">Проверить совместимость</a>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if home or (not category and not brand) %}
+    <section class="section-block">
+      <div class="section-heading"><div><span class="eyebrow">Навигация</span><h2>Категории</h2></div></div>
+      <div class="category-grid">
+        {% for item in public_categories %}
+          <a class="category-card" href="{{ url_for('site.category', category_slug=item.slug) }}">
+            <span>{{ item.name }}</span><small>{{ item.description }}</small>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  <section class="section-block catalog-section">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">{% if category %}Раздел каталога{% elif brand %}Бренд{% else %}Товары{% endif %}</span>
+        <h1{% if home %} class="h2"{% endif %}>{{ category.name if category else (('Товары ' ~ brand.name) if brand else ('Популярное в каталоге' if home else 'Каталог')) }}</h1>
+        <p>{{ category.description if category else (('Актуальные товары бренда ' ~ brand.name ~ ' из нашей базы данных.') if brand else 'Используйте поиск, фильтры и сортировку, чтобы быстро найти подходящий товар.') }}</p>
+      </div>
+      {% if home %}<a class="text-link" href="{{ url_for('site.catalog') }}">Все товары →</a>{% endif %}
+    </div>
+
+    {% if not home %}
+      <details class="filter-drawer" open>
+      <summary>Фильтры каталога</summary>
+      <form class="filters" method="get">
+        <label>Поиск<input name="q" value="{{ request.args.get('q', '') }}" placeholder="Название или характеристика"></label>
+        {% if not category %}
+          <label>Категория
+            <select name="category_id" id="category-filter"><option value="">Все</option>{% for item in result.category_roots %}<option value="{{ item.category_id }}" {% if request.args.get('category_id') == item.category_id|string %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select>
+          </label>
+          <label>Подкатегория
+            <select name="subcategory_id" id="subcategory-filter"><option value="">Все</option>{% for root in result.category_roots %}{% for item in root.children %}<option value="{{ item.category_id }}" data-parent="{{ root.category_id }}" {% if request.args.get('subcategory_id') == item.category_id|string %}selected{% endif %}>{{ item.name }}</option>{% endfor %}{% endfor %}</select>
+          </label>
+        {% endif %}
+        <label>Бренд
+          <select name="brand_id"><option value="">Все</option>{% for brand in result.brands %}<option value="{{ row_value(brand, 'id_brand') }}" {% if request.args.get('brand_id') == row_value(brand, 'id_brand')|string %}selected{% endif %}>{{ row_value(brand, 'name') }}</option>{% endfor %}</select>
+        </label>
+        <label>Цена от<input type="number" min="0" step="0.01" name="price_from" value="{{ request.args.get('price_from', '') }}"></label>
+        <label>Цена до<input type="number" min="0" step="0.01" name="price_to" value="{{ request.args.get('price_to', '') }}"></label>
+        <label>Цвет<input name="color" value="{{ request.args.get('color', '') }}" placeholder="Например, чёрный"></label>
+        <label>Материал<input name="material" value="{{ request.args.get('material', '') }}" placeholder="Сетка, кожа…"></label>
+        <label>Механизм<input name="mechanism" value="{{ request.args.get('mechanism', '') }}" placeholder="Тип механизма"></label>
+        <label>Сортировка
+          <select name="sort"><option value="new">Сначала новинки</option><option value="price" {% if request.args.get('sort') == 'price' %}selected{% endif %}>Сначала дешёвые</option><option value="price_rev" {% if request.args.get('sort') == 'price_rev' %}selected{% endif %}>Сначала дорогие</option></select>
+        </label>
+        <button class="button primary" type="submit">Применить</button>
+        <a class="button" href="{{ request.path }}">Сбросить</a>
+      </form>
+      </details>
+    {% endif %}
+
+    {% if result.database_error %}
+      <div class="notice">Каталог временно недоступен: не удалось подключиться к базе данных. Навигация и информационные разделы продолжают работать.</div>
+    {% elif result.products %}
+      <div class="product-grid">{% for product in result.products %}{% include "site/_product_card.html" %}{% endfor %}</div>
+    {% else %}
+      <div class="empty-state"><h2>Товары не найдены</h2><p>Измените параметры фильтра или откройте другой раздел каталога.</p><a class="button" href="{{ url_for('site.catalog') }}">Весь каталог</a></div>
+    {% endif %}
+
+    {% if not home and result.total_pages > 1 %}
+      <nav class="pagination" aria-label="Страницы каталога">
+        {% for number in range(1, result.total_pages + 1) %}
+          <a {% if number == result.page %}aria-current="page"{% endif %} href="?page={{ number }}&sort={{ request.args.get('sort', 'new') }}&q={{ request.args.get('q', '')|urlencode }}&category_id={{ request.args.get('category_id', '') }}&subcategory_id={{ request.args.get('subcategory_id', '') }}&brand_id={{ request.args.get('brand_id', '') }}&price_from={{ request.args.get('price_from', '') }}&price_to={{ request.args.get('price_to', '') }}&color={{ request.args.get('color', '')|urlencode }}&material={{ request.args.get('material', '')|urlencode }}&mechanism={{ request.args.get('mechanism', '')|urlencode }}">{{ number }}</a>
+        {% endfor %}
+      </nav>
+    {% endif %}
+  </section>
+  {% if not home %}
+  <script>
+    (() => {
+      const category = document.getElementById('category-filter');
+      const subcategory = document.getElementById('subcategory-filter');
+      if (!category || !subcategory) return;
+      const sync = () => {
+        const selected = category.value;
+        let selectedStillVisible = !subcategory.value;
+        [...subcategory.options].forEach((option, index) => {
+          if (!index) return;
+          option.hidden = Boolean(selected && option.dataset.parent !== selected);
+          if (option.selected && !option.hidden) selectedStillVisible = true;
+        });
+        if (!selectedStillVisible) subcategory.value = '';
+      };
+      category.addEventListener('change', sync);
+      sync();
+    })();
+  </script>
+  {% endif %}
+{% endblock %}

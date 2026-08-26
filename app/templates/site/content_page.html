@@ -1,0 +1,19 @@
+{% extends "site/base.html" %}
+{% block content %}
+  {% if article is defined %}
+    <article class="prose-card article-page">
+      <header class="article-header">
+        <span class="eyebrow">{{ section_title }}</span>
+        <h1>{{ article.title }}</h1>
+        <time datetime="{{ article.date }}">{{ article.date }}</time>
+      </header>
+      <div class="article-body">{{ article.body_html|safe }}</div>
+      <footer class="article-footer">
+        <a class="button" href="{{ url_for('site.articles') }}">← Все статьи</a>
+        <a class="button primary" href="{{ url_for('site.catalog') }}">Перейти в каталог</a>
+      </footer>
+    </article>
+  {% else %}
+    <article class="prose-card"><span class="eyebrow">{{ section_title }}</span><h1>{{ heading }}</h1><p class="lead">Материал информационного раздела Ролмарк.</p><a class="button primary" href="{{ url_for('site.catalog') }}">Перейти в каталог</a></article>
+  {% endif %}
+{% endblock %}

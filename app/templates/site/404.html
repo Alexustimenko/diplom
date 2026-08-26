@@ -1,0 +1,4 @@
+{% extends "site/base.html" %}
+{% block content %}
+  <section class="error-page"><span class="error-code">404</span><h1>Страница не найдена</h1><p>Возможно, адрес изменился или был введён с ошибкой.</p><div class="button-row"><a class="button primary" href="{{ url_for('site.home') }}">На главную</a><a class="button" href="{{ url_for('site.catalog') }}">В каталог</a></div></section>
+{% endblock %}

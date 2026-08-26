@@ -1,0 +1,46 @@
+{
+  "researched_on": "2026-08-20",
+  "source": "https://clerk.by/catalog-kresel/",
+  "brands": [
+    {"name": "Everprof", "slug": "everprof", "catalog_slug": "kresla_everprof", "aliases": []},
+    {"name": "Metta", "clerk_name": "МЕТТА", "slug": "metta", "catalog_slug": "kresla_metta", "aliases": ["МЕТТА"]},
+    {"name": "AksHome", "slug": "akshome", "catalog_slug": "kresla_akshome", "aliases": []},
+    {"name": "CHAIRMAN", "slug": "chairman", "catalog_slug": "kresla_chairman", "aliases": ["Chairman"]},
+    {"name": "Бюрократ", "slug": "byurokrat", "catalog_slug": "kresla_byurokrat", "aliases": []},
+    {"name": "BRABIX", "slug": "brabix", "catalog_slug": "kresla_brabix", "aliases": ["Brabix"]},
+    {"name": "Hi-Tech", "slug": "hi-tech", "catalog_slug": "kresla_hitech", "aliases": ["Hi Tech", "Hitech"]},
+    {"name": "ERGOLINE", "slug": "ergoline", "catalog_slug": "kresla_ergoline", "aliases": ["Ergoline"]}
+  ],
+  "categories": [
+    {"name": "Офисные кресла", "slug": "ofisnye-kresla", "parent_slug": null, "aliases": []},
+    {"name": "Недорогие кресла", "slug": "nedorogo-kupit-kreslo", "parent_slug": "ofisnye-kresla", "aliases": []},
+    {"name": "Кресла класса премиум", "slug": "kresla_klassa_premium", "parent_slug": "ofisnye-kresla", "aliases": []},
+    {"name": "Геймерские кресла", "slug": "gejmerskie_kresla", "parent_slug": "ofisnye-kresla", "aliases": []},
+    {"name": "Компьютерные кресла", "slug": "kompyuternye_kresla", "parent_slug": "ofisnye-kresla", "aliases": []},
+    {"name": "Кресла для персонала", "slug": "kreslo-dlya-personala", "parent_slug": "ofisnye-kresla", "aliases": []},
+    {"name": "Новые модели офисных кресел", "slug": "novye_modeli_ofisnyh_kresel", "parent_slug": "ofisnye-kresla", "aliases": []},
+    {"name": "Кресла руководителя", "slug": "kreslo-rukovoditelya", "parent_slug": "ofisnye-kresla", "aliases": ["Кресло руководителя"]},
+    {"name": "Кресла для посетителей", "slug": "kresla_dlya_posetitelej", "parent_slug": "ofisnye-kresla", "aliases": []},
+    {"name": "Кожаные кресла", "slug": "kojanoe-kreslo", "parent_slug": "ofisnye-kresla", "aliases": ["Кожаное кресло"]},
+    {"name": "Кресла для отдыха", "slug": "kresla_dlya_otdyha", "parent_slug": "ofisnye-kresla", "aliases": []},
+    {"name": "Кресла-реклайнеры", "slug": "kreslo-reklajner", "parent_slug": "ofisnye-kresla", "aliases": ["Кресло-реклайнер"]},
+
+    {"name": "Пластиковые сиденья", "slug": "plastikovye_sidenya", "parent_slug": null, "aliases": []},
+    {"name": "Детские стулья", "slug": "detskie_stulya", "parent_slug": null, "aliases": []},
+    {"name": "Растущая мебель для детей", "slug": "rastuschaya_mebel_dlya_detej", "parent_slug": "detskie_stulya", "aliases": []},
+    {"name": "Складная мебель", "slug": "skladnaya_mebel", "parent_slug": null, "aliases": []},
+    {"name": "Кухонные стулья", "slug": "kuhonnye_stulya_kupit_nedorogo", "parent_slug": null, "aliases": []},
+    {"name": "Барные стулья", "slug": "barnye_stulya", "parent_slug": null, "aliases": []},
+    {"name": "Офисные диваны", "slug": "ofisnie-divany", "parent_slug": null, "aliases": []},
+    {"name": "Стеклянные столы", "slug": "steklyannye_stoly", "parent_slug": null, "aliases": []},
+    {"name": "Офисная мебель", "slug": "ofisnaya_mebel", "parent_slug": null, "aliases": []},
+
+    {"name": "Комплектующие", "slug": "komplektuyushchiye-dlia-ofisnykh-kresel-i-stulyev", "parent_slug": null, "aliases": ["Запчасти"]},
+    {"name": "Крестовины", "slug": "krestoviny", "parent_slug": "komplektuyushchiye-dlia-ofisnykh-kresel-i-stulyev", "aliases": []},
+    {"name": "Ролики", "slug": "roliki", "parent_slug": "komplektuyushchiye-dlia-ofisnykh-kresel-i-stulyev", "aliases": []},
+    {"name": "Механизмы", "slug": "mehanizmy", "parent_slug": "komplektuyushchiye-dlia-ofisnykh-kresel-i-stulyev", "aliases": []},
+
+    {"name": "Товары для спорта", "slug": "tovary_dlya_sporta_nedorogo", "parent_slug": null, "aliases": []},
+    {"name": "Товары для отдыха и туризма", "slug": "tovary_dlia_otdyha_i_turizma", "parent_slug": null, "aliases": []}
+  ]
+}

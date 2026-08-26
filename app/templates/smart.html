@@ -67,9 +67,9 @@
         }
         .chip.ok{ border-color: rgba(26,163,74,.45); background:rgba(26,163,74,.08); color:#0b3b3b; }
         .chip.bad{ border-color: rgba(209,0,0,.45); background:rgba(209,0,0,.08); color:#0b3b3b; }
-    </style>
+</style><link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='legacy-unify.css') }}">
 </head>
-<body>
+<body>{% include "site/_legacy_header.html" %}
 
 <div class="topbar">
     <div class="logo">УМНЫЙ ПОДБОР</div>
@@ -186,5 +186,5 @@
     {% endif %}
 </div>
 
-</body>
+{% include "site/_legacy_footer.html" %}</body>
 </html>

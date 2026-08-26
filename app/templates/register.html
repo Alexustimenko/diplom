@@ -6,7 +6,7 @@
 body { background-color: #FAF7E7; font-family: Arial, sans-serif; }
 
 .container {
-    width: 400px;
+    width: min(400px, calc(100% - 24px));
     margin: 100px auto;
     background: white;
     padding: 30px;
@@ -16,8 +16,7 @@ body { background-color: #FAF7E7; font-family: Arial, sans-serif; }
 
 h2 { text-align: center; color: #CF1B03; }
 
-/* 🔥 ГЛАВНОЕ ИСПРАВЛЕНИЕ */
-input, select, button {
+.container input, .container select, .container button {
     width: 100%;
     padding: 10px;
     margin-top: 10px;
@@ -28,12 +27,12 @@ input, select, button {
 }
 
 /* select чуть выравниваем по высоте */
-select {
+.container select {
     appearance: none;
 }
 
 /* кнопка */
-button {
+.container button {
     margin-top: 15px;
     background-color: #CF1B03;
     color: white;
@@ -42,12 +41,12 @@ button {
     font-weight: bold;
 }
 
-button:disabled {
+.container button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
 }
 
-button:hover:not(:disabled) {
+.container button:hover:not(:disabled) {
     opacity: 0.9;
 }
 
@@ -65,11 +64,11 @@ button:hover:not(:disabled) {
 
 .link { margin-top: 14px; text-align: center; }
 .link a { color: #CF1B03; font-weight: bold; text-decoration: none; }
-</style>
+</style><link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='legacy-unify.css') }}">
 </head>
-<body>
+<body>{% include "site/_legacy_header.html" %}
 
-<div class="container">
+<div class="container auth-container">
     <h2>Регистрация</h2>
 
     <form method="POST">
@@ -157,5 +156,5 @@ function toggleButton() {
 }
 </script>
 
-</body>
+{% include "site/_legacy_footer.html" %}</body>
 </html>

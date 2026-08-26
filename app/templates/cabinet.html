@@ -93,8 +93,9 @@
     display:none;
 }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='legacy-unify.css') }}">
 </head>
-<body>
+<body>{% include "site/_legacy_header.html" %}
 <div class="box">
     <h2>Личный кабинет</h2>
     <p>Email: <b>{{ email }}</b></p>
@@ -258,5 +259,5 @@ function printOrder(id){
     win.print();
 }
 </script>
-</body>
+{% include "site/_legacy_footer.html" %}</body>
 </html>
