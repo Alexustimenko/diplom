@@ -96,6 +96,48 @@ class AboutPageTests(unittest.TestCase):
                 self.assertIn(text.encode("utf-8"), response.data)
 
 
+class SalePageTests(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app()
+        self.app.config.update(TESTING=True, SERVER_NAME="localhost")
+        self.client = self.app.test_client()
+
+    def test_sale_page_matches_reference_content(self):
+        response = self.client.get("/sale/")
+        self.assertEqual(response.status_code, 200)
+        for text in (
+            "Создаем комфорт и уют с креслами от EVERPROF.",
+            "Скидки до 24% на кресла:",
+            "Только до 1 июля 2022 года скидки до 35%",
+            "С приходом весны хочется порадовать себя приятными покупками.",
+            "Скдки до 22% на кресла:",
+            "Распродажа складного стола",
+            "Готовимся к школе!",
+            "с 7 по 14 февраля 2020",
+            "Встречайте осеннюю акцию 2019 года",
+            'акция "Жаркие цены" продлена до конца сентября 2018 года',
+        ):
+            with self.subTest(text=text):
+                self.assertIn(text.encode("utf-8"), response.data)
+        for image in (
+            "_2025_spring.jpg",
+            "vesna2024.jpg",
+            "banner_nw.jpg",
+            "vena2023.jpg",
+            "oct22.jpg",
+            "baner_everprof1.jpg",
+            "vesna11.jpg",
+            "new_year2022.jpg",
+            "imgpsh_fullsize_anim.jpeg",
+            "980466-2.png",
+            "valentine640.png",
+            "chaay650.png",
+            "hot-price.png",
+        ):
+            with self.subTest(image=image):
+                self.assertIn(f"/static/sale/{image}".encode(), response.data)
+
+
 class PublicRouteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -247,6 +247,20 @@ def static_page(page_key: str):
                 ("Рассрочка", None),
             ],
         )
+    if page_key == "sale":
+        return render_template(
+            "site/sale.html",
+            page_title="Акции на кресла, купить офисные кресла со скидкой",
+            meta_description=(
+                "У нас вы можете купить офисные кресла по акции, скидки и "
+                "рассрочка на офисные кресла в Минске."
+            ),
+            canonical_url=url_for("site.page_sale", _external=True),
+            breadcrumbs=[
+                ("Главная", url_for("site.home")),
+                ("Акции", None),
+            ],
+        )
     short_title, heading, body = page
     return render_template(
         "site/static_page.html",
