@@ -1,7 +1,7 @@
 {% extends "site/base.html" %}
 {% block content %}
   <article class="prose-card"><span class="eyebrow">Информация</span><h1>{{ heading }}</h1><p class="lead">{{ body }}</p>
-    {% if request.endpoint == 'site.page_contact' %}<div class="contact-grid"><a href="tel:+375293514550">+375 (29) 351-45-50</a><a href="mailto:info@rolmark.by">info@rolmark.by</a><span>Минск</span></div>{% endif %}
+    {% if request.endpoint == 'site.page_contact' %}<div class="contact-grid"><a href="tel:+375293514550">+375 (29) 351-45-50</a><a href="mailto:info@clerk.by">info@clerk.by</a><span>Минск</span></div>{% endif %}
     {% if request.endpoint == 'site.page_sale' %}<p><a class="button primary" href="{{ url_for('site.category', category_slug='nedorogo-kupit-kreslo') }}">Смотреть предложения</a></p>{% endif %}
     {% if request.endpoint == 'site.page_gift' %}<p><a class="button primary" href="{{ url_for('site.catalog') }}">Перейти в каталог</a></p>{% endif %}
   </article>

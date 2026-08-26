@@ -195,7 +195,7 @@ def brand_page(brand_slug: str):
 STATIC_ROUTE_MAP = {
     "dostavka": "/dostavka/",
     "oplata": "/oplata/",
-    "contact": "/contact",
+    "contact": "/contact/",
     "about": "/about/",
     "gift": "/gift",
     "garantiya_zamena_vozvrat": "/garantiya_zamena_vozvrat",
@@ -219,6 +219,17 @@ def static_page(page_key: str):
             breadcrumbs=[
                 ("Главная", url_for("site.home")),
                 ("О нас", None),
+            ],
+        )
+    if page_key == "contact":
+        return render_template(
+            "site/contact.html",
+            page_title="Контакты нашего магазина",
+            meta_description="Контакты магазина Клерк бай, мы находимся в Минске, почти в центре города.",
+            canonical_url=url_for("site.page_contact", _external=True),
+            breadcrumbs=[
+                ("Главная", url_for("site.home")),
+                ("Контакты, обращения", None),
             ],
         )
     if page_key == "oplata":
@@ -283,7 +294,7 @@ def _register_static_routes() -> None:
             endpoint,
             lambda page_key=key: static_page(page_key),
             methods=["GET"],
-            strict_slashes=False if key == "oplata" else None,
+            strict_slashes=False if key in {"oplata", "contact"} else None,
         )
 
 

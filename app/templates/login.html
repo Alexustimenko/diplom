@@ -5,22 +5,24 @@
     <style>
         body { background-color: #FAF7E7; font-family: Arial, sans-serif; }
         .container {
-            width: 400px;
+            width: min(400px, calc(100% - 24px));
             margin: 120px auto;
             background: white;
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            box-sizing: border-box;
         }
         h2 { text-align: center; color: #CF1B03; }
-        input {
+        .container input {
             width: 100%;
             padding: 10px;
             margin-top: 12px;
             border: 2px solid #CF1B03;
             border-radius: 6px;
+            box-sizing: border-box;
         }
-        button {
+        .container button {
             width: 100%;
             padding: 10px;
             margin-top: 16px;
@@ -31,7 +33,7 @@
             font-weight: bold;
             cursor: pointer;
         }
-        button:hover { opacity: 0.9; }
+        .container button:hover { opacity: 0.9; }
         .error { margin-top: 12px; color: red; text-align: center; }
         .link { margin-top: 14px; text-align: center; }
         .link a { color: #CF1B03; font-weight: bold; text-decoration: none; }
@@ -40,7 +42,7 @@
 </head>
 <body>{% include "site/_legacy_header.html" %}
 
-<div class="container">
+<div class="container auth-container">
     <h2>Вход</h2>
 
     <form method="POST">

@@ -3,6 +3,7 @@
 body{background:var(--white)!important;color:var(--ink)!important;font-family:Inter,"Segoe UI",Arial,sans-serif!important;margin:0!important}
 .legacy-page{min-height:52vh;padding-block:32px 72px}
 .legacy-page>.container,.legacy-page>.wrap,.legacy-page>.box,.legacy-page>.page,.legacy-page>.admin-container,.legacy-page>.cart-container,.legacy-page>.cabinet-container{width:100%!important;max-width:1180px!important;margin:0 auto!important;background:#fff!important;border:1px solid var(--line)!important;border-radius:var(--radius)!important;box-shadow:var(--shadow)!important;padding:clamp(20px,4vw,42px)!important}.legacy-page>.topbar{display:none!important}
+.legacy-page>.auth-container{width:min(100%,460px)!important;max-width:460px!important}
 .legacy-page h1,.legacy-page h2,.legacy-page h3{color:var(--ink)!important;line-height:1.15}.legacy-page h1{font-size:clamp(2rem,4vw,3.2rem)!important}.legacy-page p,.legacy-page .muted{color:var(--muted)!important}
 .legacy-page input,.legacy-page select,.legacy-page textarea{border:1px solid #d7dbe1!important;border-radius:9px!important;background:#fff!important;color:var(--ink)!important;min-height:42px;padding:9px 11px!important;max-width:100%}
 .legacy-page input:focus,.legacy-page select:focus,.legacy-page textarea:focus{outline:3px solid rgba(166,43,47,.14)!important;border-color:var(--brand)!important}

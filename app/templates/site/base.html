@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ page_title }}{% if page_title != 'Ролмарк' %} — Ролмарк{% endif %}</title>
-  <meta name="description" content="{{ meta_description|default('Офисная мебель и комплектующие Ролмарк.', true) }}">
+  <title>{{ page_title }}{% if page_title != 'Clerk.by' %} — Clerk.by{% endif %}</title>
+  <meta name="description" content="{{ meta_description|default('Офисная мебель и комплектующие Clerk.by.', true) }}">
   {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='legacy-unify.css') }}">
@@ -14,13 +14,18 @@
   <header class="site-header">
     <div class="utility-bar">
       <div class="shell utility-inner">
-        <span>Минск · консультации и заказ офисной мебели</span>
-        <a href="mailto:info@rolmark.by">info@rolmark.by</a>
+        <span>г. Минск, ул. Маяковского, 26, кабинет 1</span>
+        <div class="utility-contacts">
+          <a href="tel:+375293514550">+375 (29) 351-45-50</a>
+          <a href="tel:+375173489982">+375 (17) 348-99-82</a>
+          <a href="tel:+375297514550">+375 (29) 751-45-50</a>
+          <a href="mailto:info@clerk.by">info@clerk.by</a>
+        </div>
       </div>
     </div>
     <div class="shell header-main">
-      <a class="brand" href="{{ url_for('site.home') }}" aria-label="Ролмарк — главная">
-        <img src="{{ url_for('static', filename='rolmark_logo.png') }}" alt="Ролмарк">
+      <a class="brand" href="{{ url_for('site.home') }}" aria-label="Clerk.by — главная">
+        <img src="{{ url_for('static', filename='rolmark_logo.png') }}" alt="Clerk.by">
       </a>
       <form class="header-search" action="{{ url_for('site.catalog') }}" method="get" role="search">
         <label class="sr-only" for="header-q">Поиск товара</label>
@@ -100,12 +105,13 @@
         <h2>Связь</h2>
         <a href="tel:+375293514550">+375 (29) 351-45-50</a>
         <a href="tel:+375173489982">+375 (17) 348-99-82</a>
-        <a href="mailto:info@rolmark.by">info@rolmark.by</a>
+        <a href="tel:+375297514550">+375 (29) 751-45-50</a>
+        <a href="mailto:info@clerk.by">info@clerk.by</a>
         <span>Пн–Пт 9:00–18:00</span>
       </section>
     </div>
     <div class="shell footer-bottom">
-      <span>© {{ 2026 }} Ролмарк</span>
+      <span>© {{ 2026 }} Clerk.by</span>
       <a href="{{ url_for('site.page_politika_konfidentsialnosti') }}">Политика конфиденциальности</a>
     </div>
   </footer>
