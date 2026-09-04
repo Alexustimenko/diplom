@@ -8,7 +8,6 @@
       <span class="eyebrow">{{ row_value(p, 'brand_name', category.name) }}</span>
       <h1>{{ row_value(p, 'name', 'Товар') }}</h1>
       <p class="price detail-price">{{ '%.2f'|format(row_value(p, 'price', 0)|float) }} руб.</p>
-      <p class="stock {% if row_value(p, 'stock_quantity', 0)|int > 0 %}in-stock{% endif %}">{% if row_value(p, 'stock_quantity', 0)|int > 0 %}В наличии: {{ row_value(p, 'stock_quantity') }}{% else %}Уточните срок поставки{% endif %}</p>
       {% if session.get('user_id') %}
         <form class="buy-form" action="{{ url_for('auth.cart_add', pid=row_value(p, 'product_id')) }}" method="post">
           <label>Количество<input type="number" name="qty" value="1" min="1" max="99"></label>
@@ -26,7 +25,7 @@
       <div><dt>Категория</dt><dd><a href="{{ url_for('site.category', category_slug=category.slug) }}">{{ category.name }}</a></dd></div>
       <div><dt>Бренд</dt><dd>{{ row_value(p, 'brand_name', 'Не указан') }}</dd></div>
       <div><dt>Артикул</dt><dd>{{ row_value(p, 'product_id') }}</dd></div>
-      <div><dt>Наличие</dt><dd>{{ row_value(p, 'stock_quantity', 0) }}</dd></div>
+
     </dl>
   </section>
   {% if related %}<section class="section-block"><div class="section-heading"><h2>Похожие товары</h2></div><div class="product-grid">{% for product in related %}{% include "site/_product_card.html" %}{% endfor %}</div></section>{% endif %}
